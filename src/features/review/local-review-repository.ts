@@ -8,7 +8,7 @@ const REVIEW_STORAGE_KEY = "kinda-spanish-review-items";
 
 export function createLocalReviewRepository(): ReviewRepository {
   return {
-    listItems: () => {
+    listItems: async () => {
       if (typeof window === "undefined") {
         return [...reviewSeedItems];
       }
@@ -26,7 +26,7 @@ export function createLocalReviewRepository(): ReviewRepository {
         return [...reviewSeedItems];
       }
     },
-    saveItems: (items) => {
+    saveItems: async (items) => {
       if (typeof window === "undefined") {
         return;
       }

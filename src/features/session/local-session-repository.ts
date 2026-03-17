@@ -6,9 +6,9 @@ import type { SessionRepository } from "@/features/session/session-repository";
 
 export function createLocalSessionRepository(): SessionRepository {
   return {
-    loadProgress: readStoredSessionProgress,
-    saveProgress: writeStoredSessionProgress,
-    clearProgress: clearStoredSessionProgress
+    loadProgress: async (scenarioId) => readStoredSessionProgress(scenarioId),
+    saveProgress: async (progress) => writeStoredSessionProgress(progress),
+    clearProgress: async (scenarioId) => clearStoredSessionProgress(scenarioId)
   };
 }
 

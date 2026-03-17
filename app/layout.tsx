@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { SoundProvider } from "@/components/sound-provider";
+import { SupabaseAuthProvider } from "@/components/supabase-auth-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#fffaf2"
+  themeColor: "#e6d6af"
 };
 
 export default function RootLayout({
@@ -33,7 +34,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <SoundProvider>{children}</SoundProvider>
+        <SupabaseAuthProvider>
+          <SoundProvider>{children}</SoundProvider>
+        </SupabaseAuthProvider>
       </body>
     </html>
   );

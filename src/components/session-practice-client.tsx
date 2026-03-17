@@ -1,22 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Chip } from "@/components/chip";
 import { RewardBanner } from "@/components/reward-banner";
 import { SoundButton } from "@/components/sound-button";
+import { useSupabaseAuth } from "@/components/supabase-auth-provider";
 import type {
   Scenario,
   SessionAttemptInputMode,
   SessionProgress,
   TurnPrompt
 } from "@/entities/domain";
-import {
-  createLocalSessionRepository,
-  createSessionProgress,
-  withSessionAttempt,
-  withSessionDraft,
-  withSessionPlayback
-} from "@/features/session/local-session-repository";
+import { createSessionProgress, withSessionAttempt, withSessionDraft, withSessionPlayback } from "@/features/session/local-session-repository";
 import { useSpeechCapture } from "@/hooks/use-speech-capture";
 import { buildMockAttemptResult } from "@/lib/ai/mock-evaluator";
 import {
@@ -25,6 +20,7 @@ import {
   type LessonAudioStatus
 } from "@/lib/audio/lesson-audio";
 import { upsertReviewItemFromSession } from "@/features/review/review-service";
+import { loadSessionProgress, saveSessionProgress } from "@/features/session/session-service";
 
 type SessionPracticeClientProps = {
   scenario: Scenario;
@@ -54,7 +50,7 @@ export function SessionPracticeClient({
   scenario,
   prompt
 }: SessionPracticeClientProps) {
-  const repository = useMemo(() => createLocalSessionRepository(), []);
+  const { userId, isRemoteReady } = useSupabaseAuth();
   const speech = useSpeechCapture("es-ES");
   const {
     status: speechStatus,
@@ -91,29 +87,49 @@ export function SessionPracticeClient({
   const statusLabel = statusLabelForSpeech(speechStatus);
 
   useEffect(() => {
-    const storedProgress = repository.loadProgress(scenario.id);
+    let cancelled = false;
 
-    if (storedProgress) {
-      setSessionProgress(storedProgress);
-      setTranscript(storedProgress.latestTranscript);
-      setDraftInputMode(storedProgress.lastInputMode ?? "typed");
-    } else {
-      const freshProgress = createSessionProgress(scenario.id);
-      setSessionProgress(freshProgress);
-      setTranscript("");
-      setDraftInputMode("typed");
-    }
+    const hydrateSession = async () => {
+      const storedProgress = await loadSessionProgress(scenario.id, {
+        userId,
+        remoteEnabled: isRemoteReady
+      });
 
-    setHasHydrated(true);
-  }, [repository, scenario.id, setTranscript]);
+      if (cancelled) {
+        return;
+      }
+
+      if (storedProgress) {
+        setSessionProgress(storedProgress);
+        setTranscript(storedProgress.latestTranscript);
+        setDraftInputMode(storedProgress.lastInputMode ?? "typed");
+      } else {
+        const freshProgress = createSessionProgress(scenario.id);
+        setSessionProgress(freshProgress);
+        setTranscript("");
+        setDraftInputMode("typed");
+      }
+
+      setHasHydrated(true);
+    };
+
+    void hydrateSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRemoteReady, scenario.id, setTranscript, userId]);
 
   useEffect(() => {
     if (!hasHydrated) {
       return;
     }
 
-    repository.saveProgress(sessionProgress);
-  }, [hasHydrated, repository, sessionProgress]);
+    void saveSessionProgress(sessionProgress, {
+      userId,
+      remoteEnabled: isRemoteReady
+    });
+  }, [hasHydrated, isRemoteReady, sessionProgress, userId]);
 
   useEffect(() => {
     return () => {
@@ -251,11 +267,14 @@ export function SessionPracticeClient({
       setSessionProgress((current) =>
         withSessionAttempt(current, draftInputMode, normalizedTranscript, result)
       );
-      upsertReviewItemFromSession({
+      void upsertReviewItemFromSession({
         scenarioId: scenario.id,
         chunk: result.carryAwayChunk,
         sentence: normalizedTranscript,
         audioRef: `${scenario.id}:neutral`
+      }, {
+        userId,
+        remoteEnabled: isRemoteReady
       });
     });
   };

@@ -2,32 +2,82 @@
 
 import type { ReviewItem, ReviewOutcome } from "@/entities/domain";
 import { createLocalReviewRepository } from "@/features/review/local-review-repository";
+import { createSupabaseReviewRepository } from "@/features/review/supabase-review-repository";
 import { applyReviewOutcome, buildReviewQueue, createReviewItemFromSession } from "@/lib/review/review-scheduler";
 
-export function loadReviewQueue() {
-  const repository = createLocalReviewRepository();
-  return buildReviewQueue(repository.listItems());
+const REVIEW_MIGRATION_KEY = "kinda-spanish-review-migrated-v1";
+
+type ReviewServiceContext = {
+  userId?: string;
+  remoteEnabled?: boolean;
+};
+
+async function getReviewRepositoryState(context?: ReviewServiceContext) {
+  const localRepository = createLocalReviewRepository();
+  const remoteRepository = createSupabaseReviewRepository();
+  const shouldUseRemote = Boolean(context?.remoteEnabled && context?.userId);
+
+  if (!shouldUseRemote || !context?.userId || typeof window === "undefined") {
+    return {
+      repository: localRepository,
+      items: await localRepository.listItems()
+    };
+  }
+
+  try {
+    const alreadyMigrated = window.localStorage.getItem(REVIEW_MIGRATION_KEY) === "done";
+
+    if (!alreadyMigrated) {
+      const localItems = await localRepository.listItems();
+
+      if (localItems.length > 0) {
+        await remoteRepository.saveItems(localItems, context.userId);
+      }
+
+      window.localStorage.setItem(REVIEW_MIGRATION_KEY, "done");
+    }
+
+    return {
+      repository: remoteRepository,
+      items: await remoteRepository.listItems(context.userId)
+    };
+  } catch {
+    return {
+      repository: localRepository,
+      items: await localRepository.listItems()
+    };
+  }
 }
 
-export function saveReviewOutcome(reviewItemId: string, outcome: ReviewOutcome) {
-  const repository = createLocalReviewRepository();
-  const items = repository.listItems();
+export async function loadReviewQueue(context?: ReviewServiceContext) {
+  const { items } = await getReviewRepositoryState(context);
+  return buildReviewQueue(items);
+}
+
+export async function saveReviewOutcome(
+  reviewItemId: string,
+  outcome: ReviewOutcome,
+  context?: ReviewServiceContext
+) {
+  const { repository, items } = await getReviewRepositoryState(context);
   const updatedItems = items.map((item) =>
     item.id === reviewItemId ? applyReviewOutcome(item, outcome) : item
   );
 
-  repository.saveItems(updatedItems);
+  await repository.saveItems(updatedItems, context?.userId);
   return buildReviewQueue(updatedItems);
 }
 
-export function upsertReviewItemFromSession(options: {
+export async function upsertReviewItemFromSession(
+  options: {
   scenarioId: string;
   chunk: string;
   sentence: string;
   audioRef: string;
-}) {
-  const repository = createLocalReviewRepository();
-  const items = repository.listItems();
+  },
+  context?: ReviewServiceContext
+) {
+  const { repository, items } = await getReviewRepositoryState(context);
   const existing = items.find(
     (item) => item.scenarioId === options.scenarioId && item.chunk === options.chunk
   );
@@ -58,6 +108,6 @@ export function upsertReviewItemFromSession(options: {
     ];
   }
 
-  repository.saveItems(updatedItems);
+  await repository.saveItems(updatedItems, context?.userId);
   return buildReviewQueue(updatedItems);
 }

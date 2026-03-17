@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Chip } from "@/components/chip";
 import { RewardBanner } from "@/components/reward-banner";
 import { SoundButton } from "@/components/sound-button";
+import { useSupabaseAuth } from "@/components/supabase-auth-provider";
 import type { ReviewItem, ReviewOutcome, ReviewQueue } from "@/entities/domain";
 import { loadReviewQueue, saveReviewOutcome } from "@/features/review/review-service";
 import { formatReviewDueLabel } from "@/lib/review/review-scheduler";
@@ -52,6 +53,7 @@ function ReviewActionButtons({
 }
 
 export function ReviewPracticeClient() {
+  const { userId, isRemoteReady } = useSupabaseAuth();
   const [queue, setQueue] = useState<ReviewQueue>({
     dueNow: [],
     upcoming: [],
@@ -62,15 +64,37 @@ export function ReviewPracticeClient() {
   const upcomingPreview = useMemo(() => queue.upcoming.slice(0, 3), [queue.upcoming]);
 
   useEffect(() => {
-    setQueue(loadReviewQueue());
-  }, []);
+    let cancelled = false;
 
-  const handleOutcome = (outcome: ReviewOutcome) => {
+    const hydrateQueue = async () => {
+      const nextQueue = await loadReviewQueue({
+        userId,
+        remoteEnabled: isRemoteReady
+      });
+
+      if (!cancelled) {
+        setQueue(nextQueue);
+      }
+    };
+
+    void hydrateQueue();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRemoteReady, userId]);
+
+  const handleOutcome = async (outcome: ReviewOutcome) => {
     if (!currentItem) {
       return;
     }
 
-    setQueue(saveReviewOutcome(currentItem.id, outcome));
+    const nextQueue = await saveReviewOutcome(currentItem.id, outcome, {
+      userId,
+      remoteEnabled: isRemoteReady
+    });
+
+    setQueue(nextQueue);
     setCompletedCount((count) => count + 1);
   };
 

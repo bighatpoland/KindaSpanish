@@ -7,13 +7,13 @@ export function ProgressBar({
 }) {
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between text-sm text-bark/70">
-        <span>{label}</span>
-        <span>{value}%</span>
+      <div className="mb-2 flex items-center justify-between text-sm text-walnut/75">
+        <span className="uppercase tracking-[0.12em]">{label}</span>
+        <span className="font-semibold text-brass">{value}%</span>
       </div>
-      <div className="h-4 rounded-pill border border-cypress/12 bg-[linear-gradient(180deg,rgba(216,198,164,0.68)_0%,rgba(200,209,184,0.62)_100%)] p-[2px]">
+      <div className="inset-panel h-5 rounded-pill border border-walnut/12 p-[2px]">
         <div
-          className="h-full rounded-pill bg-[linear-gradient(90deg,#4d6f5f_0%,#7c8e5b_46%,#c89a43_100%)]"
+          className="h-full rounded-pill bg-[linear-gradient(90deg,#4a6857_0%,#788454_44%,#cf9e41_100%)] shadow-[inset_0_1px_0_rgba(255,244,212,0.4)]"
           style={{ width: `${value}%` }}
         />
       </div>

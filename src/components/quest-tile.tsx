@@ -28,16 +28,18 @@ export function QuestTile({
 }: QuestTileProps) {
   const baseClass =
     variant === "hero"
-      ? "quest-tile quest-tile--hero game-interactive ornament-frame rounded-panel border border-cypress/18 courtyard-tile p-4 shadow-panel"
-      : "quest-tile game-interactive ornament-frame rounded-plaque border border-cypress/16 courtyard-tile p-4 shadow-sm";
+      ? "quest-tile quest-tile--hero game-interactive hero-scroll ornament-frame rounded-panel border border-walnut/18 courtyard-tile px-5 py-4 shadow-panel"
+      : "quest-tile game-interactive ornament-frame rounded-plaque border border-walnut/16 courtyard-tile px-4 py-4 shadow-sm";
 
   const content = (
     <>
-      <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">{eyebrow}</p>
-      <h3 className={`${variant === "hero" ? "text-2xl" : "text-lg"} mt-2 font-semibold text-bark`}>
+      <p className="text-[11px] uppercase tracking-[0.22em] text-bark/55">{eyebrow}</p>
+      <h3
+        className={`${variant === "hero" ? "text-[1.75rem]" : "text-xl"} mt-2 font-semibold leading-tight text-walnut`}
+      >
         {title}
       </h3>
-      <p className="mt-2 text-sm leading-5 text-plum/78">{description}</p>
+      <p className="mt-2 text-sm leading-6 text-plum/80">{description}</p>
       {chips ? <div className="mt-4 flex flex-wrap gap-2">{chips}</div> : null}
       {footer ? <div className="mt-5">{footer}</div> : null}
     </>
