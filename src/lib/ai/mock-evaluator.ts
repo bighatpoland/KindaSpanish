@@ -17,19 +17,27 @@ export function buildMockTurnPrompt(input: GenerateTurnPromptInput): TurnPrompt 
 
 export function buildMockAttemptResult(input: EvaluateAttemptInput): AttemptResult {
   const normalizedReply = input.learnerReply.toLowerCase();
-  const normalizedTarget = input.targetChunk.toLowerCase();
-  const functionHit = normalizedReply.includes(normalizedTarget);
+  const matchedChunk =
+    input.targetChunks.find((chunk) => normalizedReply.includes(chunk.toLowerCase())) ??
+    input.targetChunks[0];
+  const hasEnoughWords = normalizedReply.split(/\s+/).filter(Boolean).length >= 2;
+  const functionHit = Boolean(matchedChunk && hasEnoughWords);
+  const expectedFunctionCue = input.expectedFunctions?.[0];
 
   return {
-    comprehensibilityScore: functionHit ? 0.89 : 0.64,
+    comprehensibilityScore: functionHit ? 0.9 : hasEnoughWords ? 0.72 : 0.58,
     functionHit,
     primaryFeedback: functionHit
-      ? "Clear enough to work in real life."
-      : "The idea is there. Add one more useful chunk to make it land faster.",
+      ? expectedFunctionCue
+        ? `Clear enough to handle the ${expectedFunctionCue} moment in real life.`
+        : "Clear enough to work in real life."
+      : hasEnoughWords
+        ? "The idea is there. Add one stronger survival chunk so the meaning lands faster."
+        : "Make it one beat longer so the other person can understand what you need.",
     retryPrompt: functionHit
       ? "Try it once more with calmer pacing."
-      : `Retry with "${input.targetChunk}" somewhere in the sentence.`,
-    carryAwayChunk: input.targetChunk,
+      : `Retry with "${matchedChunk}" somewhere in the sentence.`,
+    carryAwayChunk: matchedChunk,
     avoidLongText: true
   };
 }
@@ -37,4 +45,3 @@ export function buildMockAttemptResult(input: EvaluateAttemptInput): AttemptResu
 export function buildMockRetry(input: SuggestRetryInput) {
   return `${input.primaryFeedback} One more go, but shorter.`;
 }
-

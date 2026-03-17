@@ -8,7 +8,8 @@ export interface GenerateTurnPromptInput {
 export interface EvaluateAttemptInput {
   scenarioId: string;
   learnerReply: string;
-  targetChunk: string;
+  targetChunks: string[];
+  expectedFunctions?: string[];
 }
 
 export interface SuggestRetryInput {
@@ -21,4 +22,3 @@ export interface AIConversationService {
   evaluateAttempt(input: EvaluateAttemptInput): Promise<AttemptResult>;
   suggestRetry(input: SuggestRetryInput): Promise<string>;
 }
-

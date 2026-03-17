@@ -16,7 +16,22 @@ export const scenarioSeeds = [
       "gracias, ya bajo"
     ],
     mission: "Use one package-related phrase today if a delivery or pickup moment happens.",
-    audioVariants: ["neutral", "faster-native"]
+    audioClips: [
+      {
+        id: "courier-dropoff-neutral",
+        variant: "neutral",
+        transcript: "Hola, traigo un paquete para ti.",
+        playbackRate: 0.94,
+        ttsFallback: true
+      },
+      {
+        id: "courier-dropoff-fast",
+        variant: "fast",
+        transcript: "Hola, traigo un paquete para ti.",
+        playbackRate: 1.12,
+        ttsFallback: true
+      }
+    ]
   },
   {
     id: "corner-shop",
@@ -35,7 +50,22 @@ export const scenarioSeeds = [
       "al fondo a la derecha"
     ],
     mission: "Ask for one item in Spanish the next time you are in a shop.",
-    audioVariants: ["neutral", "messy-real-speech"]
+    audioClips: [
+      {
+        id: "corner-shop-neutral",
+        variant: "neutral",
+        transcript: "Perdona, tienes bolsas de basura?",
+        playbackRate: 0.94,
+        ttsFallback: true
+      },
+      {
+        id: "corner-shop-messy",
+        variant: "fast",
+        transcript: "Perdona, tienes bolsas de basura?",
+        playbackRate: 1.1,
+        ttsFallback: true
+      }
+    ]
   },
   {
     id: "neighbor-small-talk",
@@ -54,7 +84,21 @@ export const scenarioSeeds = [
       "con mucha energia"
     ],
     mission: "Say one friendly sentence to a neighbor or passerby this week.",
-    audioVariants: ["neutral", "andalusian-light"]
+    audioClips: [
+      {
+        id: "neighbor-small-talk-neutral",
+        variant: "neutral",
+        transcript: "Que tal? Todo bien con los perros?",
+        playbackRate: 0.92,
+        ttsFallback: true
+      },
+      {
+        id: "neighbor-small-talk-andalusian-light",
+        variant: "fast",
+        transcript: "Que tal? Todo bien con los perros?",
+        playbackRate: 1.08,
+        ttsFallback: true
+      }
+    ]
   }
 ] as const;
-

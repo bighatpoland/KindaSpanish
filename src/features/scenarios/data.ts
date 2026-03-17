@@ -1,5 +1,11 @@
 import { scenarioSeeds } from "../../../content/scenario-seeds";
-import type { MissionLink, ReviewItem, Scenario, TurnPrompt } from "@/entities/domain";
+import type {
+  MissionLink,
+  ReviewItem,
+  Scenario,
+  ScenarioAudioClip,
+  TurnPrompt
+} from "@/entities/domain";
 
 export const scenarios: Scenario[] = [...scenarioSeeds];
 
@@ -36,27 +42,36 @@ export const turnPrompts: Record<string, TurnPrompt[]> = {
 export const reviewItems: ReviewItem[] = [
   {
     id: "review-courier-1",
+    scenarioId: "courier-dropoff",
     chunk: "un momento",
     sentence: "Si, un momento. Ya voy.",
     audioRef: "courier-dropoff:neutral",
-    nextReviewAt: "Tonight",
-    easeState: "warming"
+    dueAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    easeState: "warming",
+    intervalDays: 1,
+    repetitions: 1
   },
   {
     id: "review-shop-1",
+    scenarioId: "corner-shop",
     chunk: "tienes",
     sentence: "Perdona, tienes pan integral?",
     audioRef: "corner-shop:neutral",
-    nextReviewAt: "Tomorrow",
-    easeState: "fresh"
+    dueAt: new Date(Date.now() + 1000 * 60 * 60 * 18).toISOString(),
+    easeState: "fresh",
+    intervalDays: 1,
+    repetitions: 0
   },
   {
     id: "review-neighbor-1",
+    scenarioId: "neighbor-small-talk",
     chunk: "todo bien",
     sentence: "Si, todo bien. Y tu?",
     audioRef: "neighbor-small-talk:andalusian-light",
-    nextReviewAt: "Tomorrow morning",
-    easeState: "warming"
+    dueAt: new Date(Date.now() + 1000 * 60 * 60 * 10).toISOString(),
+    easeState: "warming",
+    intervalDays: 2,
+    repetitions: 1
   }
 ];
 
@@ -82,3 +97,9 @@ export function getScenarioById(id: string) {
   return scenarios.find((scenario) => scenario.id === id);
 }
 
+export function getScenarioAudioClip(
+  scenario: Scenario,
+  variant: string
+): ScenarioAudioClip | undefined {
+  return scenario.audioClips.find((clip) => clip.variant === variant);
+}

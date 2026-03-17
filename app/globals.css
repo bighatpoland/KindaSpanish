@@ -153,6 +153,13 @@ textarea {
     0 8px 16px rgba(93, 63, 30, 0.18);
 }
 
+.village-plaque {
+  background:
+    radial-gradient(circle at top left, rgba(249, 245, 230, 0.76), transparent 24%),
+    radial-gradient(circle at 86% 16%, rgba(80, 121, 108, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(246, 236, 214, 0.98) 0%, rgba(227, 217, 188, 0.96) 100%);
+}
+
 .medallion--alive {
   animation: rewardGlow 3.2s ease-in-out infinite;
 }
@@ -270,6 +277,24 @@ textarea {
   background: linear-gradient(90deg, transparent 0%, rgba(110, 75, 46, 0.2) 20%, rgba(110, 75, 46, 0.34) 50%, rgba(110, 75, 46, 0.2) 80%, transparent 100%);
 }
 
+.path-line {
+  background:
+    linear-gradient(90deg, rgba(47, 75, 62, 0) 0%, rgba(47, 75, 62, 0.16) 18%, rgba(47, 75, 62, 0.24) 50%, rgba(47, 75, 62, 0.16) 82%, rgba(47, 75, 62, 0) 100%);
+}
+
+.terrain-ring {
+  position: relative;
+}
+
+.terrain-ring::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  border: 1px solid rgba(69, 105, 90, 0.12);
+  pointer-events: none;
+}
+
 .game-interactive {
   position: relative;
   transition:
@@ -362,6 +387,13 @@ textarea {
     radial-gradient(circle at top left, rgba(250, 246, 231, 0.72), transparent 24%),
     radial-gradient(circle at 88% 14%, rgba(80, 121, 108, 0.12), transparent 24%),
     linear-gradient(180deg, rgba(247, 236, 214, 0.98) 0%, rgba(230, 220, 191, 0.96) 100%);
+}
+
+.forest-chip {
+  background:
+    linear-gradient(180deg, rgba(240, 244, 234, 0.95) 0%, rgba(219, 230, 214, 0.92) 100%);
+  border-color: rgba(69, 105, 90, 0.16);
+  color: #2f4b3e;
 }
 
 @media (prefers-reduced-motion: reduce) {

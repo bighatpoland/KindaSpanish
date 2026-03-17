@@ -1,344 +1,447 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Chip } from "@/components/chip";
 import { RewardBanner } from "@/components/reward-banner";
 import { SoundButton } from "@/components/sound-button";
-import type { Scenario, TurnPrompt } from "@/entities/domain";
+import type {
+  Scenario,
+  SessionAttemptInputMode,
+  SessionProgress,
+  TurnPrompt
+} from "@/entities/domain";
+import {
+  createLocalSessionRepository,
+  createSessionProgress,
+  withSessionAttempt,
+  withSessionDraft,
+  withSessionPlayback
+} from "@/features/session/local-session-repository";
+import { useSpeechCapture } from "@/hooks/use-speech-capture";
 import { buildMockAttemptResult } from "@/lib/ai/mock-evaluator";
+import {
+  playLessonAudioClip,
+  type LessonAudioRuntime,
+  type LessonAudioStatus
+} from "@/lib/audio/lesson-audio";
+import { upsertReviewItemFromSession } from "@/features/review/review-service";
 
 type SessionPracticeClientProps = {
   scenario: Scenario;
   prompt: TurnPrompt | undefined;
 };
 
-type PlaybackState = "idle" | "playing" | "ended";
-type RecognitionState = "idle" | "listening" | "processing" | "done" | "unsupported";
-
-type PersistedSession = {
-  transcript: string;
-  feedback: string;
-  retryPrompt: string;
-  listenedOnce: boolean;
-  listenedFast: boolean;
-  lastUpdatedAt: string;
-};
-
-type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
-
-type SpeechRecognitionLike = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-type SpeechRecognitionEventLike = {
-  results: {
-    [index: number]: {
-      [index: number]: {
-        transcript: string;
-      };
-    };
-    length: number;
-  };
-};
-
-const storageKeyForScenario = (scenarioId: string) => `kinda-spanish-session-progress:${scenarioId}`;
-
-function readRecognitionCtor(): SpeechRecognitionCtor | null {
-  if (typeof window === "undefined") {
-    return null;
+function statusLabelForSpeech(status: ReturnType<typeof useSpeechCapture>["status"]) {
+  switch (status) {
+    case "requesting-permission":
+      return "Allow mic";
+    case "recording":
+      return "Recording";
+    case "transcribing":
+      return "Finishing";
+    case "done":
+      return "Reply ready";
+    case "unsupported":
+      return "Type instead";
+    case "error":
+      return "Mic issue";
+    default:
+      return "Ready";
   }
-
-  const possibleWindow = window as Window & {
-    webkitSpeechRecognition?: SpeechRecognitionCtor;
-    SpeechRecognition?: SpeechRecognitionCtor;
-  };
-
-  return possibleWindow.SpeechRecognition ?? possibleWindow.webkitSpeechRecognition ?? null;
 }
 
 export function SessionPracticeClient({
   scenario,
   prompt
 }: SessionPracticeClientProps) {
-  const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
-  const [fastPlaybackState, setFastPlaybackState] = useState<PlaybackState>("idle");
-  const [recognitionState, setRecognitionState] = useState<RecognitionState>("idle");
-  const [transcript, setTranscript] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [retryPrompt, setRetryPrompt] = useState("");
-  const [listenedOnce, setListenedOnce] = useState(false);
-  const [listenedFast, setListenedFast] = useState(false);
+  const repository = useMemo(() => createLocalSessionRepository(), []);
+  const speech = useSpeechCapture("es-ES");
+  const {
+    status: speechStatus,
+    transcript,
+    setTranscript,
+    errorMessage,
+    isSupported,
+    start,
+    stop,
+    reset
+  } = speech;
+  const [sessionProgress, setSessionProgress] = useState<SessionProgress>(() =>
+    createSessionProgress(scenario.id)
+  );
+  const [primaryAudioStatus, setPrimaryAudioStatus] = useState<LessonAudioStatus>("idle");
+  const [fastAudioStatus, setFastAudioStatus] = useState<LessonAudioStatus>("idle");
+  const [draftInputMode, setDraftInputMode] = useState<SessionAttemptInputMode>("typed");
+  const [hasHydrated, setHasHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const speechSynthesisUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const transcriptRef = useRef("");
+  const audioRuntimeRef = useRef<LessonAudioRuntime | null>(null);
+  const neutralClip =
+    scenario.audioClips.find((clip) => clip.variant === "neutral") ?? scenario.audioClips[0];
+  const fastClip =
+    scenario.audioClips.find((clip) => clip.variant === "fast") ??
+    scenario.audioClips[1] ??
+    neutralClip;
+  const promptText = neutralClip?.transcript ?? prompt?.audioTranscript ?? scenario.transcript[0];
+  const latestResult = sessionProgress.latestAttemptResult;
+  const hasFeedback = Boolean(latestResult);
+  const speakActive =
+    speechStatus === "recording" ||
+    speechStatus === "requesting-permission" ||
+    speechStatus === "transcribing";
+  const statusLabel = statusLabelForSpeech(speechStatus);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(storageKeyForScenario(scenario.id));
+    const storedProgress = repository.loadProgress(scenario.id);
 
-    if (!stored) {
-      const ctor = readRecognitionCtor();
-      if (!ctor) {
-        setRecognitionState("unsupported");
-      }
+    if (storedProgress) {
+      setSessionProgress(storedProgress);
+      setTranscript(storedProgress.latestTranscript);
+      setDraftInputMode(storedProgress.lastInputMode ?? "typed");
+    } else {
+      const freshProgress = createSessionProgress(scenario.id);
+      setSessionProgress(freshProgress);
+      setTranscript("");
+      setDraftInputMode("typed");
+    }
+
+    setHasHydrated(true);
+  }, [repository, scenario.id, setTranscript]);
+
+  useEffect(() => {
+    if (!hasHydrated) {
       return;
     }
 
-    const parsed = JSON.parse(stored) as PersistedSession;
-    setTranscript(parsed.transcript);
-    transcriptRef.current = parsed.transcript;
-    setFeedback(parsed.feedback);
-    setRetryPrompt(parsed.retryPrompt);
-    setListenedOnce(parsed.listenedOnce);
-    setListenedFast(parsed.listenedFast);
-
-    const ctor = readRecognitionCtor();
-    if (!ctor) {
-      setRecognitionState("unsupported");
-    }
-  }, [scenario.id]);
-
-  useEffect(() => {
-    const payload: PersistedSession = {
-      transcript,
-      feedback,
-      retryPrompt,
-      listenedOnce,
-      listenedFast,
-      lastUpdatedAt: new Date().toISOString()
-    };
-
-    window.localStorage.setItem(storageKeyForScenario(scenario.id), JSON.stringify(payload));
-  }, [feedback, listenedFast, listenedOnce, retryPrompt, scenario.id, transcript]);
+    repository.saveProgress(sessionProgress);
+  }, [hasHydrated, repository, sessionProgress]);
 
   useEffect(() => {
     return () => {
-      window.speechSynthesis?.cancel();
-      recognitionRef.current?.stop();
+      audioRuntimeRef.current?.stop();
     };
   }, []);
 
-  const playPrompt = (rate: number) => {
-    if (typeof window === "undefined" || !window.speechSynthesis || !prompt?.audioTranscript) {
+  useEffect(() => {
+    if (!hasHydrated) {
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(prompt.audioTranscript);
-    utterance.lang = "es-ES";
-    utterance.rate = rate;
-    utterance.pitch = 1;
+    if (
+      speechStatus === "requesting-permission" ||
+      speechStatus === "recording" ||
+      speechStatus === "transcribing"
+    ) {
+      setSessionProgress((current) => withSessionDraft(current, transcript, "responding"));
+      return;
+    }
 
-    if (rate > 1) {
-      setFastPlaybackState("playing");
+    if (speechStatus === "done") {
+      setSessionProgress((current) => withSessionDraft(current, transcript, "ready-to-respond"));
+      return;
+    }
+
+    if (speechStatus === "error" || speechStatus === "unsupported") {
+      setSessionProgress((current) => ({
+        ...current,
+        updatedAt: new Date().toISOString()
+      }));
+    }
+  }, [hasHydrated, speechStatus, transcript]);
+
+  const playClip = (variant: "neutral" | "fast") => {
+    const clip = variant === "fast" ? fastClip : neutralClip;
+
+    if (!clip) {
+      return;
+    }
+
+    audioRuntimeRef.current?.stop();
+
+    if (variant === "fast") {
+      setFastAudioStatus("loading");
+      setPrimaryAudioStatus((current) => (current === "playing" ? "ended" : current));
     } else {
-      setPlaybackState("playing");
+      setPrimaryAudioStatus("loading");
+      setFastAudioStatus((current) => (current === "playing" ? "ended" : current));
     }
 
-    utterance.onend = () => {
-      if (rate > 1) {
-        setFastPlaybackState("ended");
-        setListenedFast(true);
-      } else {
-        setPlaybackState("ended");
-        setListenedOnce(true);
+    audioRuntimeRef.current = playLessonAudioClip(clip, {
+      onReady: () => {
+        if (variant === "fast") {
+          setFastAudioStatus("ready");
+        } else {
+          setPrimaryAudioStatus("ready");
+        }
+      },
+      onStart: (source) => {
+        if (variant === "fast") {
+          setFastAudioStatus("playing");
+        } else {
+          setPrimaryAudioStatus("playing");
+        }
+
+        setSessionProgress((current) =>
+          withSessionPlayback(current, {
+            status: "listening",
+            fallbackMode: source
+          })
+        );
+      },
+      onEnd: (source) => {
+        if (variant === "fast") {
+          setFastAudioStatus("ended");
+        } else {
+          setPrimaryAudioStatus("ended");
+        }
+
+        setSessionProgress((current) =>
+          withSessionPlayback(current, {
+            status: "ready-to-respond",
+            heardVariant: clip.variant,
+            fallbackMode: source
+          })
+        );
+      },
+      onError: (message) => {
+        if (variant === "fast") {
+          setFastAudioStatus("error");
+        } else {
+          setPrimaryAudioStatus("error");
+        }
+
+        setSessionProgress((current) =>
+          withSessionPlayback(current, {
+            status: current.status,
+            playbackError: message
+          })
+        );
+      },
+      onBlocked: (message) => {
+        if (variant === "fast") {
+          setFastAudioStatus("blocked");
+        } else {
+          setPrimaryAudioStatus("blocked");
+        }
+
+        setSessionProgress((current) =>
+          withSessionPlayback(current, {
+            status: current.status,
+            playbackError: message
+          })
+        );
       }
-    };
-
-    speechSynthesisUtteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+    });
   };
 
-  const startListening = () => {
-    const ctor = readRecognitionCtor();
+  const runEvaluation = () => {
+    const normalizedTranscript = transcript.trim();
 
-    if (!ctor) {
-      setRecognitionState("unsupported");
+    if (!normalizedTranscript) {
       return;
     }
 
-    const recognition = new ctor();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = "es-ES";
-    recognitionRef.current = recognition;
-    setRecognitionState("listening");
-
-    recognition.onresult = (event) => {
-      const nextTranscript = Array.from({ length: event.results.length })
-        .map((_, index) => event.results[index]?.[0]?.transcript ?? "")
-        .join(" ")
-        .trim();
-
-      transcriptRef.current = nextTranscript;
-      setTranscript(nextTranscript);
-    };
-
-    recognition.onerror = () => {
-      setRecognitionState("unsupported");
-    };
-
-    recognition.onend = () => {
-      setRecognitionState("processing");
-
-      startTransition(() => {
-        const result = buildMockAttemptResult({
-          scenarioId: scenario.id,
-          learnerReply: transcriptRef.current || "",
-          targetChunk: scenario.targetChunks[0]
-        });
-
-        setFeedback(result.primaryFeedback);
-        setRetryPrompt(result.retryPrompt);
-        setRecognitionState("done");
-      });
-    };
-
-    recognition.start();
-  };
-
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-  };
-
-  const canEvaluate = transcript.trim().length > 0;
-
-  const runTypedFallback = () => {
-    if (!canEvaluate) {
-      return;
-    }
-
-    setRecognitionState("processing");
     startTransition(() => {
       const result = buildMockAttemptResult({
         scenarioId: scenario.id,
-        learnerReply: transcriptRef.current,
-        targetChunk: scenario.targetChunks[0]
+        learnerReply: normalizedTranscript,
+        targetChunks: [...scenario.targetChunks],
+        expectedFunctions: prompt?.expectedFunctions
       });
 
-      setFeedback(result.primaryFeedback);
-      setRetryPrompt(result.retryPrompt);
-      setRecognitionState("done");
+      setSessionProgress((current) =>
+        withSessionAttempt(current, draftInputMode, normalizedTranscript, result)
+      );
+      upsertReviewItemFromSession({
+        scenarioId: scenario.id,
+        chunk: result.carryAwayChunk,
+        sentence: normalizedTranscript,
+        audioRef: `${scenario.id}:neutral`
+      });
     });
+  };
+
+  const clearDraft = () => {
+    reset();
+    setSessionProgress((current) => ({
+      ...current,
+      status: current.heardVariants.length > 0 ? "ready-to-respond" : "not-started",
+      updatedAt: new Date().toISOString(),
+      latestTranscript: "",
+      latestAttemptResult: undefined,
+      playbackError: undefined
+    }));
+    setDraftInputMode("typed");
   };
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
-        <div className="ornament-frame rounded-plaque border border-bark/10 bg-[#f7ecd6]/90 p-3 text-center">
+        <div
+          className={`ornament-frame rounded-plaque border p-3 text-center shadow-sm ${
+            sessionProgress.heardVariants.includes("neutral")
+              ? "border-cypress/22 courtyard-tile"
+              : "border-bark/10 bg-[#f7ecd6]/90"
+          }`}
+        >
           <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full medallion text-sm font-semibold text-bark">
             1
           </div>
           <p className="mt-2 text-[11px] uppercase tracking-[0.15em] text-bark/65">Listen</p>
-          <p className="mt-1 text-xs leading-5 text-plum/75">Hear the prompt in real Spanish.</p>
+          <p className="mt-1 text-xs leading-5 text-plum/75">Hear the encounter once first.</p>
         </div>
-        <div className="ornament-frame rounded-plaque border border-bark/10 bg-[#f7ecd6]/90 p-3 text-center">
+        <div
+          className={`ornament-frame rounded-plaque border p-3 text-center shadow-sm ${
+            speakActive || transcript.trim()
+              ? "border-cypress/22 courtyard-tile"
+              : "border-bark/10 bg-[#f7ecd6]/90"
+          }`}
+        >
           <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full medallion text-sm font-semibold text-bark">
             2
           </div>
-          <p className="mt-2 text-[11px] uppercase tracking-[0.15em] text-bark/65">Speak</p>
-          <p className="mt-1 text-xs leading-5 text-plum/75">Use your mic or type a fallback.</p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.15em] text-bark/65">Respond</p>
+          <p className="mt-1 text-xs leading-5 text-plum/75">Use the mic or type a fallback.</p>
         </div>
-        <div className="ornament-frame rounded-plaque border border-bark/10 bg-[#f7ecd6]/90 p-3 text-center">
+        <div
+          className={`ornament-frame rounded-plaque border p-3 text-center shadow-sm ${
+            hasFeedback ? "border-cypress/22 courtyard-tile" : "border-bark/10 bg-[#f7ecd6]/90"
+          }`}
+        >
           <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full medallion text-sm font-semibold text-bark">
             3
           </div>
           <p className="mt-2 text-[11px] uppercase tracking-[0.15em] text-bark/65">Retry</p>
-          <p className="mt-1 text-xs leading-5 text-plum/75">Get fast feedback and go again.</p>
+          <p className="mt-1 text-xs leading-5 text-plum/75">Check the answer and tighten it.</p>
         </div>
       </div>
 
-      <div className="mt-4 audio-prompt-panel ornament-frame rounded-panel border border-bark/20 p-5 text-mist">
+      <div className="audio-prompt-panel ornament-frame rounded-panel border border-bark/20 p-5 text-mist">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-sand/75">Now listening</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-sand/75">Lesson audio</p>
             <h3 className="mt-2 text-2xl font-semibold leading-tight text-mist">
-              Hear the moment before you answer
+              Hear the moment, then answer
             </h3>
+            <p className="mt-2 max-w-[24rem] text-sm leading-6 text-sand/85">
+              Sprint 1 uses structured lesson audio with browser playback and a TTS fallback, so
+              the session flow is now closer to a real phone test.
+            </p>
           </div>
           <div className="medallion flex h-12 w-12 items-center justify-center rounded-full text-lg text-bark shadow-medal">
             ◉
           </div>
         </div>
 
-        <div className="mt-5 rounded-plaque border border-sand/10 bg-black/10 p-4">
+        <div className="mt-5 rounded-plaque border border-sand/10 bg-black/10 p-4 shadow-sm">
           <p className="text-[11px] uppercase tracking-[0.18em] text-sand/75">Prompt</p>
-          <p className="mt-2 text-xl font-medium leading-8 text-mist">
-            {prompt?.audioTranscript ?? scenario.transcript[0]}
-          </p>
+          <p className="mt-2 text-xl font-medium leading-8 text-mist">{promptText}</p>
+          {prompt?.hints?.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {prompt.hints.map((hint) => (
+                <Chip key={hint} tone="forest">
+                  {hint}
+                </Chip>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
           <SoundButton
             sound="missionReady"
             volume={0.48}
-            onClick={() => playPrompt(0.92)}
-            className="listen-button rounded-panel border border-sand/15 px-5 py-4 text-left shadow-sm"
+            onClick={() => playClip("neutral")}
+            className={`listen-button rounded-panel border px-5 py-4 text-left shadow-sm ${
+              primaryAudioStatus === "playing" || primaryAudioStatus === "loading"
+                ? "border-cypress/30 ring-2 ring-cypress/20"
+                : "border-sand/15"
+            }`}
           >
             <span className="block text-[11px] uppercase tracking-[0.18em] text-bark/60">
-              Audio cue
+              Main pass
             </span>
             <span className="mt-1 block text-base font-semibold text-bark">
-              {playbackState === "playing" ? "Playing prompt..." : "Play prompt"}
+              {primaryAudioStatus === "playing"
+                ? "Playing prompt..."
+                : primaryAudioStatus === "blocked"
+                  ? "Tap again to allow audio"
+                  : "Play prompt"}
             </span>
             <span className="mt-1 block text-sm text-plum/75">
-              {listenedOnce ? "Heard once already" : "Neutral pace for first pass"}
+              {sessionProgress.heardVariants.includes("neutral")
+                ? "Heard once already"
+                : "Neutral pace for first pass"}
             </span>
           </SoundButton>
           <SoundButton
             sound="dailyReminder"
             volume={0.42}
-            onClick={() => playPrompt(1.14)}
-            className="rounded-panel border border-sand/15 bg-black/10 px-5 py-4 text-left text-sm font-semibold text-sand"
+            onClick={() => playClip("fast")}
+            className={`rounded-panel border px-5 py-4 text-left text-sm font-semibold shadow-sm ${
+              fastAudioStatus === "playing" || fastAudioStatus === "loading"
+                ? "border-olive/40 bg-[linear-gradient(180deg,rgba(63,85,71,0.96)_0%,rgba(35,53,45,0.98)_100%)] text-mist"
+                : "border-sand/15 bg-black/10 text-sand"
+            }`}
           >
-            {fastPlaybackState === "playing" ? "Playing fast..." : "Play faster audio"}
+            {fastAudioStatus === "playing" ? "Playing fast..." : "Play faster audio"}
           </SoundButton>
         </div>
+
+        {sessionProgress.playbackError ? (
+          <p className="mt-4 text-sm leading-6 text-sand/85">{sessionProgress.playbackError}</p>
+        ) : null}
       </div>
 
       <div className="session-divider my-5" />
 
-      <div className="rounded-panel border border-bark/12 bg-[#f4e7cb]/94 p-5 shadow-sm">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Your turn</p>
+      <div className="rounded-panel border border-cypress/16 bg-[linear-gradient(180deg,rgba(245,236,217,0.98)_0%,rgba(231,221,196,0.96)_100%)] p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Your turn</p>
+          <Chip tone={speechStatus === "done" ? "forest" : "sand"}>{statusLabel}</Chip>
+        </div>
         <div className="mt-4 flex flex-col items-center text-center">
-          {recognitionState !== "unsupported" ? (
+          {isSupported ? (
             <SoundButton
-              sound={recognitionState === "listening" ? "retrySoft" : "successClear"}
+              sound={speakActive ? "retrySoft" : "successClear"}
               volume={0.52}
-              onClick={() =>
-                recognitionState === "listening" ? stopListening() : startListening()
-              }
-              className="speak-button flex h-40 w-40 items-center justify-center rounded-full text-center text-bark shadow-medal"
+              onClick={() => {
+                setDraftInputMode("speech");
+
+                if (speakActive) {
+                  stop();
+                } else {
+                  start();
+                }
+              }}
+              className={`speak-button flex h-40 w-40 items-center justify-center rounded-full text-center text-bark shadow-medal ${
+                speakActive ? "ring-2 ring-cypress/30" : ""
+              }`}
             >
               <span>
                 <span className="block text-[11px] uppercase tracking-[0.2em]">
-                  {recognitionState === "listening" ? "Tap to" : "Tap to"}
+                  {speakActive ? "Tap to" : "Tap to"}
                 </span>
                 <span className="mt-2 block text-2xl font-semibold">
-                  {recognitionState === "listening" ? "Stop" : "Speak"}
+                  {speakActive ? "Stop" : "Record"}
                 </span>
               </span>
             </SoundButton>
           ) : (
             <div className="medallion flex h-32 w-32 items-center justify-center rounded-full text-center text-bark shadow-medal">
-              <span className="px-4 text-sm font-semibold">Mic not supported</span>
+              <span className="px-4 text-sm font-semibold">Type your reply</span>
             </div>
           )}
           <p className="mt-7 text-base font-semibold text-bark">
-            {recognitionState === "listening"
-              ? "Listening now..."
-              : "Say something that works."}
+            {speakActive ? "Recording now..." : "Say something that works."}
           </p>
           <p className="mt-2 max-w-[18rem] text-sm leading-6 text-plum/75">
-            One useful chunk is enough. You are aiming for clear, not flawless.
+            The goal is not perfect grammar. One useful chunk is enough.
           </p>
+          {errorMessage ? (
+            <p className="mt-3 max-w-[18rem] text-sm leading-6 text-coral-900">
+              {errorMessage}
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-5 space-y-3">
@@ -348,24 +451,36 @@ export function SessionPracticeClient({
           <textarea
             value={transcript}
             onChange={(event) => {
-              transcriptRef.current = event.target.value;
+              setDraftInputMode("typed");
               setTranscript(event.target.value);
+              setSessionProgress((current) =>
+                withSessionDraft(
+                  current,
+                  event.target.value,
+                  current.heardVariants.length > 0 ? "ready-to-respond" : "not-started"
+                )
+              );
             }}
             rows={4}
-            placeholder="Your spoken reply will appear here. If STT does not work on your phone, type your answer here to keep testing the session flow."
-            className="w-full rounded-panel border border-bark/12 bg-[#fbf2de] px-4 py-3 text-sm leading-6 text-bark outline-none transition focus:border-brass"
+            placeholder="Your spoken reply will appear here. If speech capture does not work on your phone, type your answer here and keep testing the loop."
+            className="w-full rounded-panel border border-cypress/14 bg-[#fbf2de] px-4 py-3 text-sm leading-6 text-bark outline-none transition focus:border-cypress"
           />
           <div className="flex flex-wrap gap-2">
-            <Chip>{recognitionState === "unsupported" ? "Typed fallback" : recognitionState}</Chip>
-            <Chip>{listenedOnce ? "Prompt heard" : "Need first listen"}</Chip>
-            <Chip>{listenedFast ? "Fast pass done" : "Fast pass optional"}</Chip>
+            <Chip tone={speechStatus === "done" ? "forest" : "sand"}>{speechStatus}</Chip>
+            <Chip tone={sessionProgress.heardVariants.includes("neutral") ? "forest" : "sand"}>
+              {sessionProgress.heardVariants.includes("neutral") ? "Prompt heard" : "Need first listen"}
+            </Chip>
+            <Chip tone={sessionProgress.heardVariants.includes("fast") ? "forest" : "sand"}>
+              {sessionProgress.heardVariants.includes("fast") ? "Fast pass done" : "Fast pass optional"}
+            </Chip>
+            <Chip>{sessionProgress.attemptCount} attempts saved</Chip>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <SoundButton
               sound="rewardClaim"
               volume={0.48}
-              onClick={runTypedFallback}
-              disabled={!canEvaluate || isPending}
+              onClick={runEvaluation}
+              disabled={!transcript.trim() || isPending}
               className="wood-button rounded-panel px-5 py-4 text-sm font-semibold text-mist disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPending ? "Checking..." : "Check my answer"}
@@ -373,14 +488,8 @@ export function SessionPracticeClient({
             <SoundButton
               sound="retrySoft"
               volume={0.42}
-              onClick={() => {
-                transcriptRef.current = "";
-                setTranscript("");
-                setFeedback("");
-                setRetryPrompt("");
-                setRecognitionState(readRecognitionCtor() ? "idle" : "unsupported");
-              }}
-              className="rounded-panel border border-bark/15 bg-[#efe1c1]/90 px-5 py-4 text-sm font-semibold text-bark shadow-sm"
+              onClick={clearDraft}
+              className="rounded-panel border border-cypress/16 bg-[linear-gradient(180deg,rgba(237,232,218,0.98)_0%,rgba(221,215,198,0.96)_100%)] px-5 py-4 text-sm font-semibold text-bark shadow-sm"
             >
               Clear and try again
             </SoundButton>
@@ -388,17 +497,18 @@ export function SessionPracticeClient({
         </div>
       </div>
 
-      {(feedback || retryPrompt) && (
+      {latestResult ? (
         <RewardBanner
-          title={feedback ? "Scout feedback is ready" : "Try again"}
-          body={feedback || "Keep it shorter and clearer."}
-          icon="❖"
-          tone="teal"
+          title={latestResult.functionHit ? "That works in real life" : "One more small adjustment"}
+          body={latestResult.primaryFeedback}
+          icon={latestResult.functionHit ? "✦" : "❖"}
+          tone={latestResult.functionHit ? "gold" : "teal"}
         >
-          {retryPrompt ? <Chip>{retryPrompt}</Chip> : null}
-          <Chip>{scenario.targetChunks[0]}</Chip>
+          <Chip tone="forest">{latestResult.retryPrompt}</Chip>
+          <Chip>{latestResult.carryAwayChunk}</Chip>
+          {sessionProgress.lastInputMode ? <Chip>{sessionProgress.lastInputMode}</Chip> : null}
         </RewardBanner>
-      )}
+      ) : null}
     </div>
   );
 }

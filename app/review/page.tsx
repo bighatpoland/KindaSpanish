@@ -1,6 +1,7 @@
 import { AchievementMedal } from "@/components/achievement-medal";
 import { AppShell } from "@/components/app-shell";
 import { Chip } from "@/components/chip";
+import { ReviewPracticeClient } from "@/components/review-practice-client";
 import { RewardBanner } from "@/components/reward-banner";
 import { ReviewAchievementCue } from "@/components/review-achievement-cue";
 import { SectionCard } from "@/components/section-card";
@@ -24,37 +25,30 @@ export default function ReviewPage() {
             }))}
         />
 
-        <SectionCard title="Satchel and trophy room" eyebrow="Keep the streak useful" accent="gold">
+        <SectionCard title="Archive district" eyebrow="Review map" accent="gold">
           <RewardBanner
-            title="Trophy room is awake"
-            body="Review stays short. The app celebrates showing up, retries after feedback, and phrases you can carry into the next real interaction."
-            icon="❖"
+            title="Keep the useful pieces"
+            body="This district stores the phrases and wins that matter, then sends them back when they are ready to be used again."
+            icon="◉"
             tone="teal"
           >
             <Chip>{streakState.currentDays}-day streak</Chip>
-            <Chip>{streakState.streakProtected ? "Streak saver ready" : "No saver active"}</Chip>
-            <Chip>{weeklyReport.stuckFunctions.length} stuck functions to target</Chip>
+            <Chip>{weeklyReport.stuckFunctions.length} stuck functions</Chip>
+            <Chip>{streakState.streakProtected ? "Safe today" : "Save today"}</Chip>
           </RewardBanner>
         </SectionCard>
 
-        <SectionCard title="Phrases ready for recall" eyebrow="Spaced in context" accent="coral">
-          <div className="space-y-3">
-            {reviewItems.map((item) => (
-              <div key={item.id} className="ornament-frame rounded-plaque border border-bark/12 bg-[#f7ecd6]/95 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-bark">{item.chunk}</h3>
-                  <Chip>{item.nextReviewAt}</Chip>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-plum/75">{item.sentence}</p>
-              </div>
-            ))}
-          </div>
+        <SectionCard title="Phrases due" eyebrow="Spaced recall" accent="coral">
+          <ReviewPracticeClient />
         </SectionCard>
 
-        <SectionCard title="Achievements" eyebrow="Celebration, not grades" accent="teal">
-          <div className="space-y-3">
+        <SectionCard title="Trophy house" eyebrow="Celebration, not grades" accent="teal">
+          <div className="grid gap-3">
             {progressRows.map((row) => (
-              <div key={row.id} className="ornament-frame rounded-plaque border border-bark/12 bg-[#f7ecd6]/95 p-4">
+              <div
+                key={row.id}
+                className="ornament-frame rounded-plaque border border-cypress/14 bg-[linear-gradient(180deg,rgba(247,238,218,0.98)_0%,rgba(229,218,191,0.96)_100%)] p-4"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <AchievementMedal tier={row.tier} label={row.tier.slice(0, 1)} />
@@ -65,7 +59,13 @@ export default function ReviewPage() {
                       <h3 className="mt-1 text-lg font-semibold text-bark">{row.title}</h3>
                     </div>
                   </div>
-                  <div className="medallion rounded-panel px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-bark">
+                  <div
+                    className={`rounded-panel border px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] ${
+                      row.isUnlocked
+                        ? "border-grove/18 bg-grove/16 text-bark"
+                        : "border-cypress/12 bg-[#efe4c8] text-bark"
+                    }`}
+                  >
                     {row.tier}
                   </div>
                 </div>
@@ -77,6 +77,25 @@ export default function ReviewPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="District notes" eyebrow="What this means" accent="plum">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="courtyard-tile rounded-plaque border border-cypress/16 p-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Streak</p>
+              <p className="mt-2 text-2xl font-semibold text-bark">{streakState.currentDays}d</p>
+            </div>
+            <div className="courtyard-tile rounded-plaque border border-cypress/16 p-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Due now</p>
+              <p className="mt-2 text-2xl font-semibold text-bark">{reviewItems.length}</p>
+            </div>
+            <div className="courtyard-tile rounded-plaque border border-cypress/16 p-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Unlocked</p>
+              <p className="mt-2 text-2xl font-semibold text-bark">
+                {progressRows.filter((row) => row.isUnlocked).length}
+              </p>
+            </div>
           </div>
         </SectionCard>
       </div>

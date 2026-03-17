@@ -25,6 +25,33 @@ export type CriteriaType =
   | "chunk-mastery";
 
 export type InputMode = "tap" | "speak" | "mixed";
+export type SessionAttemptInputMode = "speech" | "typed";
+export type ReviewOutcome = "again" | "good" | "easy";
+export type ReviewState = "fresh" | "warming" | "solid";
+export type SessionProgressStatus =
+  | "not-started"
+  | "listening"
+  | "ready-to-respond"
+  | "responding"
+  | "feedback-ready"
+  | "completed";
+export type SpeechCaptureStatus =
+  | "unsupported"
+  | "ready"
+  | "requesting-permission"
+  | "recording"
+  | "transcribing"
+  | "done"
+  | "error";
+
+export interface ScenarioAudioClip {
+  id: string;
+  variant: string;
+  transcript: string;
+  src?: string;
+  playbackRate?: number;
+  ttsFallback: boolean;
+}
 
 export interface Reward {
   type: RewardType;
@@ -44,7 +71,7 @@ export interface Scenario {
   transcript: readonly string[];
   targetChunks: readonly string[];
   mission: string;
-  audioVariants: readonly string[];
+  audioClips: readonly ScenarioAudioClip[];
 }
 
 export interface TurnPrompt {
@@ -66,11 +93,21 @@ export interface AttemptResult {
 
 export interface ReviewItem {
   id: string;
+  scenarioId: string;
   chunk: string;
   sentence: string;
   audioRef: string;
-  nextReviewAt: string;
-  easeState: "fresh" | "warming" | "solid";
+  dueAt: string;
+  easeState: ReviewState;
+  intervalDays: number;
+  repetitions: number;
+  lastReviewedAt?: string;
+}
+
+export interface ReviewQueue {
+  dueNow: ReviewItem[];
+  upcoming: ReviewItem[];
+  totalDue: number;
 }
 
 export interface WeeklyReport {
@@ -157,4 +194,30 @@ export interface SessionState {
   startedAt: string;
   lastCheckpoint: string;
   completionState: "active" | "retry-ready" | "finished";
+}
+
+export interface SessionAttempt {
+  id: string;
+  scenarioId: string;
+  inputMode: SessionAttemptInputMode;
+  transcript: string;
+  createdAt: string;
+  result: AttemptResult;
+}
+
+export interface SessionProgress {
+  sessionId: string;
+  scenarioId: string;
+  status: SessionProgressStatus;
+  startedAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  heardVariants: string[];
+  latestTranscript: string;
+  latestAttemptResult?: AttemptResult;
+  attemptCount: number;
+  lastInputMode?: SessionAttemptInputMode;
+  attempts: SessionAttempt[];
+  playbackError?: string;
+  fallbackMode?: "file" | "tts";
 }

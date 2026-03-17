@@ -30,7 +30,7 @@ export default function HomePage() {
           streakProtected={streakState.streakProtected}
         />
 
-        <SectionCard title="Today in the village" eyebrow="Home" accent="gold">
+        <SectionCard title="Today's map" eyebrow="Home" accent="gold">
           <div className="village-map-surface relative overflow-hidden rounded-panel border border-cypress/12 p-4">
             <div className="absolute left-[18%] top-[14%] h-24 w-24 rounded-full bg-gold/10 blur-3xl" />
             <div className="absolute right-[10%] top-[18%] h-20 w-20 rounded-full bg-grove/16 blur-3xl" />
@@ -41,29 +41,30 @@ export default function HomePage() {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-bark/60">
-                    One clear next step
+                    Tap a place to go there
                   </p>
-                  <h3 className="mt-1 text-xl font-semibold text-bark">Everything here does something</h3>
+                  <h3 className="mt-1 text-xl font-semibold text-bark">
+                    A village map with real actions
+                  </h3>
                   <p className="mt-2 text-sm leading-6 text-plum/80">
-                    Tap a place in the village to start practice, review phrases, or check what needs
-                    attention today.
+                    The buildings below are the app. Each one opens a concrete next step for today.
                   </p>
                 </div>
                 <div className="rounded-panel border border-cypress/18 bg-[linear-gradient(180deg,rgba(95,124,104,0.96)_0%,rgba(61,86,72,0.98)_100%)] px-3 py-2 text-right text-mist shadow-panel">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-mist/75">Mode</p>
-                  <p className="text-sm font-semibold">Phone-first</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-mist/75">State</p>
+                  <p className="text-sm font-semibold">Ready now</p>
                 </div>
               </div>
 
-              <div className="absolute left-[51%] top-[34%] hidden h-[36%] w-[2px] -translate-x-1/2 bg-[linear-gradient(180deg,rgba(47,75,62,0)_0%,rgba(47,75,62,0.28)_20%,rgba(47,75,62,0.32)_80%,rgba(47,75,62,0)_100%)] md:block" />
-              <div className="absolute left-[23%] top-[56%] hidden h-[2px] w-[54%] bg-[linear-gradient(90deg,rgba(47,75,62,0)_0%,rgba(47,75,62,0.24)_20%,rgba(47,75,62,0.28)_80%,rgba(47,75,62,0)_100%)] md:block" />
+              <div className="absolute left-[50%] top-[35%] hidden h-[38%] w-[2px] -translate-x-1/2 bg-[linear-gradient(180deg,rgba(47,75,62,0)_0%,rgba(47,75,62,0.24)_20%,rgba(47,75,62,0.28)_80%,rgba(47,75,62,0)_100%)] md:block" />
+              <div className="absolute left-[24%] top-[56%] hidden h-[2px] w-[52%] bg-[linear-gradient(90deg,rgba(47,75,62,0)_0%,rgba(47,75,62,0.22)_20%,rgba(47,75,62,0.26)_80%,rgba(47,75,62,0)_100%)] md:block" />
 
               <div className="grid gap-3">
                 <QuestTile
                   href={`/session/${mainScenario.id}`}
                   sound="missionReady"
                   variant="hero"
-                  eyebrow="Main square"
+                  eyebrow="Town square"
                   title="Start today's mission"
                   description={`${mainScenario.intent} in about ${mainScenario.estimatedMinutes} minutes.`}
                   chips={
