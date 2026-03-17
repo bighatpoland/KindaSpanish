@@ -1,5 +1,9 @@
-import Link from "next/link";
+"use client";
+
 import { ReactNode } from "react";
+import { UISoundName } from "@/lib/audio/ui-sounds";
+import { SoundLink } from "@/components/sound-link";
+import { SoundButton } from "@/components/sound-button";
 
 type QuestTileProps = {
   title: string;
@@ -9,6 +13,7 @@ type QuestTileProps = {
   chips?: ReactNode;
   footer?: ReactNode;
   variant?: "hero" | "place";
+  sound?: UISoundName;
 };
 
 export function QuestTile({
@@ -18,12 +23,13 @@ export function QuestTile({
   href,
   chips,
   footer,
-  variant = "place"
+  variant = "place",
+  sound = "successClear"
 }: QuestTileProps) {
   const baseClass =
     variant === "hero"
-      ? "quest-tile quest-tile--hero game-interactive ornament-frame rounded-panel border border-bark/15 bg-[linear-gradient(180deg,rgba(248,239,219,0.98)_0%,rgba(233,216,183,0.96)_100%)] p-4 shadow-panel"
-      : "quest-tile game-interactive ornament-frame rounded-plaque border border-bark/15 bg-[#f7ecd6]/95 p-4 shadow-sm";
+      ? "quest-tile quest-tile--hero game-interactive ornament-frame rounded-panel border border-cypress/18 courtyard-tile p-4 shadow-panel"
+      : "quest-tile game-interactive ornament-frame rounded-plaque border border-cypress/16 courtyard-tile p-4 shadow-sm";
 
   const content = (
     <>
@@ -39,11 +45,19 @@ export function QuestTile({
 
   if (href) {
     return (
-      <Link href={href} className={baseClass}>
+      <SoundLink href={href} sound={sound} className={baseClass}>
         {content}
-      </Link>
+      </SoundLink>
     );
   }
 
-  return <div className={baseClass}>{content}</div>;
+  return (
+    <SoundButton
+      type="button"
+      sound={sound}
+      className={`${baseClass} w-full text-left`}
+    >
+      {content}
+    </SoundButton>
+  );
 }

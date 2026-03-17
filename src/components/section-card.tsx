@@ -13,9 +13,9 @@ export function SectionCard({
 }) {
   const accentClass = {
     gold: "border-brass/25",
-    teal: "border-teal/25",
+    teal: "border-grove/28",
     coral: "border-ember/25",
-    plum: "border-plum/25"
+    plum: "border-cypress/22"
   }[accent];
 
   return (

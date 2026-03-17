@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Kinda Spanish app icon">
+  <rect width="192" height="192" rx="44" fill="#6e4b2e"/>
+  <rect x="14" y="14" width="164" height="164" rx="34" fill="#f3e5c3" stroke="#b88a35" stroke-width="6"/>
+  <circle cx="96" cy="78" r="34" fill="#deb76b" stroke="#9d6b22" stroke-width="6"/>
+  <path d="M69 120h54v20c0 9-7 16-16 16H85c-9 0-16-7-16-16v-20Z" fill="#50796c"/>
+  <path d="M96 58c10 0 18 8 18 18 0 9-8 17-18 17s-18-8-18-17c0-10 8-18 18-18Z" fill="#6e4b2e"/>
+  <path d="M88 73h16M96 65v16" stroke="#f8f1e1" stroke-width="6" stroke-linecap="round"/>
+</svg>
+

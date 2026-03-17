@@ -1,4 +1,6 @@
-import Link from "next/link";
+"use client";
+
+import { SoundLink } from "@/components/sound-link";
 
 const tabs = [
   { href: "/", label: "Home", glyph: "⌂" },
@@ -12,16 +14,17 @@ export function ArtifactNav({ activePath }: { activePath: string }) {
       {tabs.map((tab) => {
         const active = activePath === tab.href;
         return (
-          <Link
+          <SoundLink
             key={tab.href}
             href={tab.href}
+            sound="successClear"
             className={`artifact-tab flex min-w-[88px] items-center justify-center gap-2 rounded-panel px-3 py-2 text-sm font-medium ${
               active ? "artifact-tab--active medallion text-bark" : "text-sand/85"
             }`}
           >
             <span className="text-base leading-none">{tab.glyph}</span>
             <span>{tab.label}</span>
-          </Link>
+          </SoundLink>
         );
       })}
     </nav>

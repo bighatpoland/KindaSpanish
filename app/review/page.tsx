@@ -2,6 +2,7 @@ import { AchievementMedal } from "@/components/achievement-medal";
 import { AppShell } from "@/components/app-shell";
 import { Chip } from "@/components/chip";
 import { RewardBanner } from "@/components/reward-banner";
+import { ReviewAchievementCue } from "@/components/review-achievement-cue";
 import { SectionCard } from "@/components/section-card";
 import { achievements, streakState, userAchievementProgress, weeklyReport } from "@/features/gamification/data";
 import { getUnlockedAchievements } from "@/features/gamification/selectors";
@@ -13,6 +14,16 @@ export default function ReviewPage() {
   return (
     <AppShell activePath="/review">
       <div className="space-y-4">
+        <ReviewAchievementCue
+          unlockedAchievements={progressRows
+            .filter((row) => row.isUnlocked)
+            .map((row) => ({
+              id: row.id,
+              title: row.title,
+              tier: row.tier
+            }))}
+        />
+
         <SectionCard title="Satchel and trophy room" eyebrow="Keep the streak useful" accent="gold">
           <RewardBanner
             title="Trophy room is awake"
