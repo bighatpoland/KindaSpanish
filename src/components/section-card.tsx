@@ -12,20 +12,21 @@ export function SectionCard({
   accent?: "gold" | "teal" | "coral" | "plum";
 }) {
   const accentClass = {
-    gold: "from-gold/30",
-    teal: "from-teal/30",
-    coral: "from-coral/30",
-    plum: "from-plum/20"
+    gold: "border-brass/25",
+    teal: "border-teal/25",
+    coral: "border-ember/25",
+    plum: "border-plum/25"
   }[accent];
 
   return (
-    <section className={`rounded-panel bg-gradient-to-br ${accentClass} to-white p-5 shadow-card`}>
+    <section
+      className={`ornament-frame parchment-panel rounded-panel border ${accentClass} p-5 shadow-panel`}
+    >
       {eyebrow ? (
-        <p className="text-xs uppercase tracking-[0.22em] text-plum/55">{eyebrow}</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-bark/60">{eyebrow}</p>
       ) : null}
-      <h2 className="mt-2 text-xl font-semibold text-ink">{title}</h2>
+      <h2 className="mt-2 text-xl font-semibold text-bark">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );
 }
-

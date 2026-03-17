@@ -10,6 +10,67 @@
   box-sizing: border-box;
 }
 
+@keyframes floatIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes rewardGlow {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 247, 214, 0.6),
+      0 8px 16px rgba(93, 63, 30, 0.18);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 247, 214, 0.7),
+      0 10px 22px rgba(168, 120, 40, 0.28);
+  }
+}
+
+@keyframes speakPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.018);
+  }
+}
+
+@keyframes ringPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: scale(1.025);
+  }
+}
+
+@keyframes shimmerSweep {
+  from {
+    transform: translateX(-130%);
+  }
+
+  to {
+    transform: translateX(130%);
+  }
+}
+
 html {
   -webkit-tap-highlight-color: transparent;
 }
@@ -17,9 +78,32 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: #fffaf2;
-  color: #16131d;
-  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(200, 154, 67, 0.28), transparent 28%),
+    linear-gradient(180deg, #f6eddc 0%, #e7d4b0 100%);
+  color: #241814;
+  font-family: "Trebuchet MS", "Verdana", "Geneva", sans-serif;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(110, 75, 46, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110, 75, 46, 0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mix-blend-mode: multiply;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+  letter-spacing: 0.01em;
 }
 
 a {
@@ -37,3 +121,237 @@ textarea {
   background: rgba(238, 108, 77, 0.2);
 }
 
+.ornament-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.ornament-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(102, 70, 38, 0.22);
+  box-shadow: inset 0 0 0 2px rgba(250, 241, 217, 0.25);
+  pointer-events: none;
+}
+
+.ornament-frame::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: inherit;
+  border: 1px dashed rgba(130, 95, 52, 0.14);
+  pointer-events: none;
+}
+
+.medallion {
+  background: linear-gradient(180deg, #deb76b 0%, #b7872a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 247, 214, 0.6),
+    0 8px 16px rgba(93, 63, 30, 0.18);
+}
+
+.medallion--alive {
+  animation: rewardGlow 3.2s ease-in-out infinite;
+}
+
+.parchment-panel {
+  background:
+    radial-gradient(circle at top left, rgba(255, 249, 235, 0.8), transparent 25%),
+    linear-gradient(180deg, rgba(251, 244, 225, 0.98) 0%, rgba(237, 224, 200, 0.96) 100%);
+}
+
+.wood-button {
+  background: linear-gradient(180deg, #8e673f 0%, #6e4b2e 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 238, 209, 0.28),
+    0 10px 16px rgba(73, 46, 23, 0.2);
+  transition:
+    transform 140ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+.wood-button:hover,
+.wood-button:focus-visible {
+  filter: brightness(1.04);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 238, 209, 0.28),
+    0 12px 18px rgba(73, 46, 23, 0.24);
+}
+
+.wood-button:active {
+  transform: translateY(1px) scale(0.992);
+}
+
+.audio-prompt-panel {
+  background:
+    radial-gradient(circle at top, rgba(255, 247, 230, 0.82), transparent 38%),
+    linear-gradient(180deg, rgba(123, 86, 51, 0.96) 0%, rgba(86, 58, 34, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 231, 192, 0.16),
+    0 14px 26px rgba(66, 42, 22, 0.24);
+}
+
+.speak-button {
+  position: relative;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255, 235, 188, 0.88), transparent 28%),
+    linear-gradient(180deg, #d8ad57 0%, #a97823 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 245, 216, 0.65),
+    0 12px 22px rgba(93, 63, 30, 0.26);
+  transition:
+    transform 140ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+  animation: speakPulse 2.8s ease-in-out infinite;
+}
+
+.speak-button::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 999px;
+  border: 1px solid rgba(184, 138, 53, 0.32);
+  opacity: 0.9;
+  animation: ringPulse 2.8s ease-in-out infinite;
+}
+
+.speak-button::after {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  border-radius: 999px;
+  border: 1px solid rgba(184, 138, 53, 0.18);
+  opacity: 0.7;
+  animation: ringPulse 2.8s ease-in-out infinite 180ms;
+}
+
+.speak-button:hover,
+.speak-button:focus-visible {
+  filter: brightness(1.05);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 245, 216, 0.68),
+    0 16px 28px rgba(93, 63, 30, 0.3);
+}
+
+.speak-button:active {
+  transform: scale(0.98);
+}
+
+.listen-button {
+  background:
+    radial-gradient(circle at top left, rgba(255, 250, 236, 0.72), transparent 24%),
+    linear-gradient(180deg, rgba(248, 238, 214, 0.98) 0%, rgba(231, 214, 182, 0.94) 100%);
+  transition:
+    transform 140ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+.listen-button:hover,
+.listen-button:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+
+.listen-button:active {
+  transform: translateY(1px) scale(0.994);
+}
+
+.session-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(110, 75, 46, 0.2) 20%, rgba(110, 75, 46, 0.34) 50%, rgba(110, 75, 46, 0.2) 80%, transparent 100%);
+}
+
+.game-interactive {
+  position: relative;
+  transition:
+    transform 160ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    border-color 180ms ease;
+  will-change: transform;
+}
+
+.game-interactive:hover,
+.game-interactive:focus-visible {
+  transform: translateY(-2px);
+  filter: brightness(1.015);
+}
+
+.game-interactive:active {
+  transform: translateY(1px) scale(0.992);
+}
+
+.game-interactive:focus-visible {
+  outline: 2px solid rgba(184, 138, 53, 0.48);
+  outline-offset: 2px;
+}
+
+.quest-tile {
+  animation: floatIn 260ms ease both;
+}
+
+.quest-tile--hero {
+  animation-duration: 320ms;
+}
+
+.quest-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 247, 223, 0.26) 50%, transparent 75%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+
+.quest-tile:hover::after,
+.quest-tile:focus-visible::after {
+  animation: shimmerSweep 800ms ease;
+}
+
+.artifact-tab {
+  transition:
+    transform 140ms ease,
+    filter 180ms ease,
+    color 180ms ease;
+}
+
+.artifact-tab:hover,
+.artifact-tab:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.artifact-tab:active {
+  transform: translateY(1px) scale(0.988);
+}
+
+.artifact-tab--active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 247, 214, 0.65),
+    0 10px 18px rgba(93, 63, 30, 0.22);
+}
+
+.reward-banner {
+  animation: floatIn 280ms ease both;
+}
+
+.reward-banner:hover,
+.reward-banner:focus-within {
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { Chip } from "@/components/chip";
+import { RewardBanner } from "@/components/reward-banner";
 import { SectionCard } from "@/components/section-card";
 import { arcadeGames, arcadeRunResults, progressProfile } from "@/features/gamification/data";
 
@@ -7,16 +8,17 @@ export default function ArcadePage() {
   return (
     <AppShell activePath="/arcade">
       <div className="space-y-4">
-        <SectionCard title="Arcade is your second pillar" eyebrow="Fast loops" accent="teal">
-          <p className="text-sm leading-6 text-plum/80">
-            Play one-handed, get immediate rewards, and train the same chunks you need in shops,
-            hallways, and delivery moments.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
+        <SectionCard title="Training grounds" eyebrow="Fast loops" accent="teal">
+          <RewardBanner
+            title="Open stations, quick loops"
+            body="These are your village stations: fast, tactile drills for queues, hallways, and delivery moments when your brain wants to disappear."
+            icon="✦"
+            tone="gold"
+          >
             <Chip>{progressProfile.unlockedGames.length} games unlocked</Chip>
             <Chip>Solo-only progression</Chip>
             <Chip>No leaderboard pressure</Chip>
-          </div>
+          </RewardBanner>
         </SectionCard>
 
         <div className="space-y-3">
@@ -30,8 +32,16 @@ export default function ArcadePage() {
                 eyebrow={`${game.durationSeconds}s • ${game.inputMode}`}
                 accent={isUnlocked ? "gold" : "plum"}
               >
-                <p className="text-sm leading-6 text-plum/80">{game.skillFocus}</p>
-                <p className="mt-3 text-sm text-plum/70">{game.rewardProfile}</p>
+                <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+                  <div>
+                    <p className="text-sm leading-6 text-plum/80">{game.skillFocus}</p>
+                    <p className="mt-3 text-sm text-plum/70">{game.rewardProfile}</p>
+                  </div>
+                  <div className="medallion h-fit rounded-panel px-4 py-3 text-center text-bark">
+                    <p className="text-[10px] uppercase tracking-[0.18em]">Station</p>
+                    <p className="mt-1 text-lg font-semibold">{isUnlocked ? "Open" : "Locked"}</p>
+                  </div>
+                </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Chip>{isUnlocked ? "Unlocked" : game.unlockRule}</Chip>
                   {lastRun ? <Chip>Last score {lastRun.score}</Chip> : null}
@@ -45,4 +55,3 @@ export default function ArcadePage() {
     </AppShell>
   );
 }
-
