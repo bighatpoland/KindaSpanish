@@ -41,18 +41,19 @@ export default function HomePage() {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-bark/60">
-                    Tap a place to go there
+                    Today
                   </p>
                   <h3 className="mt-1 text-xl font-semibold text-bark">
-                    A village map with real actions
+                    One small useful win
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-plum/80">
-                    The buildings below are the app. Each one opens a concrete next step for today.
+                    Start the mission, review one phrase, or do a quick drill. Everything below is
+                    here to help you speak faster in a real moment today.
                   </p>
                 </div>
                 <div className="rounded-panel border border-cypress/18 bg-[linear-gradient(180deg,rgba(95,124,104,0.96)_0%,rgba(61,86,72,0.98)_100%)] px-3 py-2 text-right text-mist shadow-panel">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-mist/75">State</p>
-                  <p className="text-sm font-semibold">Ready now</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-mist/75">Next up</p>
+                  <p className="text-sm font-semibold">{mainScenario.estimatedMinutes} min mission</p>
                 </div>
               </div>
 
