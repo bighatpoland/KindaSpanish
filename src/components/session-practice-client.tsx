@@ -71,6 +71,7 @@ export function SessionPracticeClient({
   const [hasHydrated, setHasHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
   const audioRuntimeRef = useRef<LessonAudioRuntime | null>(null);
+  const holdRecordingRef = useRef(false);
   const neutralClip =
     scenario.audioClips.find((clip) => clip.variant === "neutral") ?? scenario.audioClips[0];
   const fastClip =
@@ -249,6 +250,28 @@ export function SessionPracticeClient({
     });
   };
 
+  const beginHoldRecording = () => {
+    if (!isSupported || holdRecordingRef.current || speakActive) {
+      return;
+    }
+
+    holdRecordingRef.current = true;
+    setDraftInputMode("speech");
+    start();
+  };
+
+  const endHoldRecording = () => {
+    if (!holdRecordingRef.current) {
+      return;
+    }
+
+    holdRecordingRef.current = false;
+
+    if (speakActive) {
+      stop();
+    }
+  };
+
   const runEvaluation = () => {
     const normalizedTranscript = transcript.trim();
 
@@ -421,15 +444,26 @@ export function SessionPracticeClient({
         <div className="mt-4 flex flex-col items-center text-center">
           {isSupported ? (
             <SoundButton
-              sound={speakActive ? "retrySoft" : "successClear"}
+              sound="successClear"
               volume={0.52}
-              onClick={() => {
-                setDraftInputMode("speech");
+              onPointerDown={beginHoldRecording}
+              onPointerUp={endHoldRecording}
+              onPointerCancel={endHoldRecording}
+              onPointerLeave={endHoldRecording}
+              onKeyDown={(event) => {
+                if (event.repeat) {
+                  return;
+                }
 
-                if (speakActive) {
-                  stop();
-                } else {
-                  start();
+                if (event.key === " " || event.key === "Enter") {
+                  event.preventDefault();
+                  beginHoldRecording();
+                }
+              }}
+              onKeyUp={(event) => {
+                if (event.key === " " || event.key === "Enter") {
+                  event.preventDefault();
+                  endHoldRecording();
                 }
               }}
               className={`speak-button flex h-40 w-40 items-center justify-center rounded-full text-center text-bark shadow-medal ${
@@ -438,10 +472,10 @@ export function SessionPracticeClient({
             >
               <span>
                 <span className="block text-[11px] uppercase tracking-[0.2em]">
-                  {speakActive ? "Tap to" : "Tap to"}
+                  {speakActive ? "Release to" : "Press and hold"}
                 </span>
                 <span className="mt-2 block text-2xl font-semibold">
-                  {speakActive ? "Stop" : "Record"}
+                  {speakActive ? "Finish" : "Answer"}
                 </span>
               </span>
             </SoundButton>
@@ -451,10 +485,10 @@ export function SessionPracticeClient({
             </div>
           )}
           <p className="mt-7 text-base font-semibold text-bark">
-            {speakActive ? "Recording now..." : "Say something that works."}
+            {speakActive ? "Recording now..." : "Hold the button and answer out loud."}
           </p>
           <p className="mt-2 max-w-[18rem] text-sm leading-6 text-plum/75">
-            The goal is not perfect grammar. One useful chunk is enough.
+            Release when you are done. The app will turn your answer into text automatically.
           </p>
           {errorMessage ? (
             <p className="mt-3 max-w-[18rem] text-sm leading-6 text-coral-900">
@@ -502,7 +536,7 @@ export function SessionPracticeClient({
               disabled={!transcript.trim() || isPending}
               className="wood-button rounded-panel px-5 py-4 text-sm font-semibold text-mist disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending ? "Checking..." : "Check my answer"}
+              {isPending ? "Validating..." : "Validate my answer"}
             </SoundButton>
             <SoundButton
               sound="retrySoft"
@@ -510,7 +544,7 @@ export function SessionPracticeClient({
               onClick={clearDraft}
               className="rounded-panel border border-cypress/16 bg-[linear-gradient(180deg,rgba(237,232,218,0.98)_0%,rgba(221,215,198,0.96)_100%)] px-5 py-4 text-sm font-semibold text-bark shadow-sm"
             >
-              Clear and try again
+              Clear and record again
             </SoundButton>
           </div>
         </div>
