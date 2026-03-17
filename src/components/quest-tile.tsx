@@ -28,8 +28,8 @@ export function QuestTile({
 }: QuestTileProps) {
   const baseClass =
     variant === "hero"
-      ? "quest-tile quest-tile--hero game-interactive hero-scroll ornament-frame rounded-panel border border-walnut/18 courtyard-tile px-5 py-4 shadow-panel"
-      : "quest-tile game-interactive ornament-frame rounded-plaque border border-walnut/16 courtyard-tile px-4 py-4 shadow-sm";
+      ? "quest-tile quest-tile--hero game-interactive hero-scroll ornament-frame rounded-[20px] border border-[#9e7a44] menu-cell px-5 py-4 shadow-panel"
+      : "quest-tile game-interactive ornament-frame rounded-[18px] border border-[#8f6b3b] menu-cell px-4 py-4 shadow-sm";
 
   const content = (
     <>

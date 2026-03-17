@@ -6,7 +6,11 @@ import { RewardBanner } from "@/components/reward-banner";
 import { SoundButton } from "@/components/sound-button";
 import { useSupabaseAuth } from "@/components/supabase-auth-provider";
 import type { ReviewItem, ReviewOutcome, ReviewQueue } from "@/entities/domain";
-import { loadReviewQueue, saveReviewOutcome } from "@/features/review/review-service";
+import {
+  loadReviewQueue,
+  REVIEW_QUEUE_UPDATED_EVENT,
+  saveReviewOutcome
+} from "@/features/review/review-service";
 import { formatReviewDueLabel } from "@/lib/review/review-scheduler";
 
 function outcomeCopy(outcome: ReviewOutcome) {
@@ -79,8 +83,17 @@ export function ReviewPracticeClient() {
 
     void hydrateQueue();
 
+    const refresh = () => {
+      void hydrateQueue();
+    };
+
+    window.addEventListener(REVIEW_QUEUE_UPDATED_EVENT, refresh);
+    window.addEventListener("focus", refresh);
+
     return () => {
       cancelled = true;
+      window.removeEventListener(REVIEW_QUEUE_UPDATED_EVENT, refresh);
+      window.removeEventListener("focus", refresh);
     };
   }, [isRemoteReady, userId]);
 
@@ -146,6 +159,18 @@ export function ReviewPracticeClient() {
             <ReviewActionButtons onSelect={handleOutcome} />
           </div>
         </div>
+      ) : null}
+
+      {!currentItem && completedCount > 0 ? (
+        <RewardBanner
+          title="Review queue cleared for now"
+          body="You handled everything currently due. The next phrases are already scheduled to come back later."
+          icon="✦"
+          tone="gold"
+        >
+          <Chip tone="forest">{completedCount} cleared this visit</Chip>
+          <Chip>{queue.upcoming.length} upcoming</Chip>
+        </RewardBanner>
       ) : null}
 
       <div className="grid gap-3">

@@ -19,15 +19,15 @@ export function SectionCard({
   }[accent];
 
   return (
-    <section className="relative rounded-panel border border-walnut/20 p-[1px] shadow-card">
+    <section className="stone-panel gold-corners relative rounded-panel border border-[#121b27] p-1 shadow-card">
       <div
-        className={`pointer-events-none absolute inset-x-10 top-0 h-[3px] rounded-full opacity-90 ${accentClass}`}
+        className={`pointer-events-none absolute inset-x-10 top-1 h-[3px] rounded-full opacity-90 ${accentClass}`}
       />
-      <div className="ornament-frame parchment-panel rounded-panel px-5 pb-5 pt-4">
+      <div className="ornament-frame village-plaque rounded-panel px-5 pb-5 pt-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             {eyebrow ? (
-              <p className="text-[11px] uppercase tracking-[0.28em] text-bark/60">{eyebrow}</p>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-walnut/72">{eyebrow}</p>
             ) : null}
             <h2 className="mt-2 text-[1.35rem] font-semibold leading-tight text-walnut">{title}</h2>
           </div>

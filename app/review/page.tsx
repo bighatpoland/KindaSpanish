@@ -1,16 +1,23 @@
+"use client";
+
 import { AchievementMedal } from "@/components/achievement-medal";
 import { AppShell } from "@/components/app-shell";
 import { Chip } from "@/components/chip";
 import { ReviewPracticeClient } from "@/components/review-practice-client";
+import { ReviewStatusCards } from "@/components/review-status-cards";
 import { RewardBanner } from "@/components/reward-banner";
 import { ReviewAchievementCue } from "@/components/review-achievement-cue";
 import { SectionCard } from "@/components/section-card";
+import { useProgressSnapshot } from "@/hooks/use-progress-snapshot";
 import { achievements, streakState, userAchievementProgress, weeklyReport } from "@/features/gamification/data";
 import { getUnlockedAchievements } from "@/features/gamification/selectors";
-import { reviewItems } from "@/features/scenarios/data";
 
 export default function ReviewPage() {
-  const progressRows = getUnlockedAchievements(achievements, userAchievementProgress);
+  const snapshot = useProgressSnapshot();
+  const activeStreak = snapshot?.streak ?? streakState;
+  const activeAchievementProgress = snapshot?.achievementProgress ?? userAchievementProgress;
+  const activeWeeklyReport = snapshot?.weeklyReport ?? weeklyReport;
+  const progressRows = getUnlockedAchievements(achievements, activeAchievementProgress);
 
   return (
     <AppShell activePath="/review">
@@ -32,9 +39,9 @@ export default function ReviewPage() {
             icon="◉"
             tone="teal"
           >
-            <Chip>{streakState.currentDays}-day streak</Chip>
-            <Chip>{weeklyReport.stuckFunctions.length} stuck functions</Chip>
-            <Chip>{streakState.streakProtected ? "Safe today" : "Save today"}</Chip>
+            <Chip>{activeStreak.currentDays}-day streak</Chip>
+            <Chip>{activeWeeklyReport.stuckFunctions.length} stuck functions</Chip>
+            <Chip>{activeStreak.streakProtected ? "Safe today" : "Save today"}</Chip>
           </RewardBanner>
         </SectionCard>
 
@@ -81,20 +88,19 @@ export default function ReviewPage() {
         </SectionCard>
 
         <SectionCard title="District notes" eyebrow="What this means" accent="plum">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="courtyard-tile rounded-plaque border border-cypress/16 p-4">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Streak</p>
-              <p className="mt-2 text-2xl font-semibold text-bark">{streakState.currentDays}d</p>
-            </div>
-            <div className="courtyard-tile rounded-plaque border border-cypress/16 p-4">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Due now</p>
-              <p className="mt-2 text-2xl font-semibold text-bark">{reviewItems.length}</p>
-            </div>
-            <div className="courtyard-tile rounded-plaque border border-cypress/16 p-4">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Unlocked</p>
-              <p className="mt-2 text-2xl font-semibold text-bark">
-                {progressRows.filter((row) => row.isUnlocked).length}
-              </p>
+          <div className="space-y-3">
+            <ReviewStatusCards />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="courtyard-tile rounded-plaque border border-cypress/16 p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Streak</p>
+                <p className="mt-2 text-2xl font-semibold text-bark">{activeStreak.currentDays}d</p>
+              </div>
+              <div className="courtyard-tile rounded-plaque border border-cypress/16 p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Unlocked</p>
+                <p className="mt-2 text-2xl font-semibold text-bark">
+                  {progressRows.filter((row) => row.isUnlocked).length}
+                </p>
+              </div>
             </div>
           </div>
         </SectionCard>

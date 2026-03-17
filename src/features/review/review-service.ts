@@ -6,6 +6,7 @@ import { createSupabaseReviewRepository } from "@/features/review/supabase-revie
 import { applyReviewOutcome, buildReviewQueue, createReviewItemFromSession } from "@/lib/review/review-scheduler";
 
 const REVIEW_MIGRATION_KEY = "kinda-spanish-review-migrated-v1";
+export const REVIEW_QUEUE_UPDATED_EVENT = "kinda-spanish:review-queue-updated";
 
 type ReviewServiceContext = {
   userId?: string;
@@ -54,6 +55,19 @@ export async function loadReviewQueue(context?: ReviewServiceContext) {
   return buildReviewQueue(items);
 }
 
+export async function loadReviewItems(context?: ReviewServiceContext) {
+  const { items } = await getReviewRepositoryState(context);
+  return items;
+}
+
+function notifyReviewQueueUpdated() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(REVIEW_QUEUE_UPDATED_EVENT));
+}
+
 export async function saveReviewOutcome(
   reviewItemId: string,
   outcome: ReviewOutcome,
@@ -65,6 +79,7 @@ export async function saveReviewOutcome(
   );
 
   await repository.saveItems(updatedItems, context?.userId);
+  notifyReviewQueueUpdated();
   return buildReviewQueue(updatedItems);
 }
 
@@ -109,5 +124,6 @@ export async function upsertReviewItemFromSession(
   }
 
   await repository.saveItems(updatedItems, context?.userId);
+  notifyReviewQueueUpdated();
   return buildReviewQueue(updatedItems);
 }

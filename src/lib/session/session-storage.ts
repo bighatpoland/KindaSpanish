@@ -44,3 +44,33 @@ export function clearStoredSessionProgress(scenarioId: string) {
 
   window.localStorage.removeItem(getSessionProgressStorageKey(scenarioId));
 }
+
+export function listStoredSessionProgress(): SessionProgress[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const items: SessionProgress[] = [];
+
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+
+    if (!key || !key.startsWith(SESSION_PROGRESS_KEY_PREFIX)) {
+      continue;
+    }
+
+    const raw = window.localStorage.getItem(key);
+
+    if (!raw) {
+      continue;
+    }
+
+    try {
+      items.push(JSON.parse(raw) as SessionProgress);
+    } catch {
+      continue;
+    }
+  }
+
+  return items;
+}

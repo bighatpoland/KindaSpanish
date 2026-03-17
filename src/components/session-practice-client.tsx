@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Chip } from "@/components/chip";
 import { RewardBanner } from "@/components/reward-banner";
 import { SoundButton } from "@/components/sound-button";
+import { SoundLink } from "@/components/sound-link";
 import { useSupabaseAuth } from "@/components/supabase-auth-provider";
 import type {
   Scenario,
@@ -71,7 +72,6 @@ export function SessionPracticeClient({
   const [hasHydrated, setHasHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
   const audioRuntimeRef = useRef<LessonAudioRuntime | null>(null);
-  const holdRecordingRef = useRef(false);
   const neutralClip =
     scenario.audioClips.find((clip) => clip.variant === "neutral") ?? scenario.audioClips[0];
   const fastClip =
@@ -81,10 +81,13 @@ export function SessionPracticeClient({
   const promptText = neutralClip?.transcript ?? prompt?.audioTranscript ?? scenario.transcript[0];
   const latestResult = sessionProgress.latestAttemptResult;
   const hasFeedback = Boolean(latestResult);
+  const heardMainPrompt = sessionProgress.heardVariants.includes("neutral");
   const speakActive =
     speechStatus === "recording" ||
     speechStatus === "requesting-permission" ||
     speechStatus === "transcribing";
+  const canEvaluate = heardMainPrompt && transcript.trim().length > 0 && !speakActive && !isPending;
+  const missionCompleted = sessionProgress.status === "completed";
   const statusLabel = statusLabelForSpeech(speechStatus);
 
   useEffect(() => {
@@ -148,12 +151,18 @@ export function SessionPracticeClient({
       speechStatus === "recording" ||
       speechStatus === "transcribing"
     ) {
-      setSessionProgress((current) => withSessionDraft(current, transcript, "responding"));
+      setSessionProgress((current) => ({
+        ...withSessionDraft(current, transcript, "responding"),
+        latestAttemptResult: undefined
+      }));
       return;
     }
 
     if (speechStatus === "done") {
-      setSessionProgress((current) => withSessionDraft(current, transcript, "ready-to-respond"));
+      setSessionProgress((current) => ({
+        ...withSessionDraft(current, transcript, "ready-to-respond"),
+        latestAttemptResult: undefined
+      }));
       return;
     }
 
@@ -250,32 +259,29 @@ export function SessionPracticeClient({
     });
   };
 
-  const beginHoldRecording = () => {
-    if (!isSupported || holdRecordingRef.current || speakActive) {
+  const toggleRecording = () => {
+    if (!isSupported) {
       return;
     }
-
-    holdRecordingRef.current = true;
-    setDraftInputMode("speech");
-    start();
-  };
-
-  const endHoldRecording = () => {
-    if (!holdRecordingRef.current) {
-      return;
-    }
-
-    holdRecordingRef.current = false;
 
     if (speakActive) {
       stop();
+      return;
     }
+
+    setDraftInputMode("speech");
+    setSessionProgress((current) => ({
+      ...current,
+      latestAttemptResult: undefined,
+      updatedAt: new Date().toISOString()
+    }));
+    start();
   };
 
   const runEvaluation = () => {
     const normalizedTranscript = transcript.trim();
 
-    if (!normalizedTranscript) {
+    if (!normalizedTranscript || !heardMainPrompt) {
       return;
     }
 
@@ -300,6 +306,19 @@ export function SessionPracticeClient({
         remoteEnabled: isRemoteReady
       });
     });
+  };
+
+  const finishMission = () => {
+    if (!latestResult) {
+      return;
+    }
+
+    setSessionProgress((current) => ({
+      ...current,
+      status: "completed",
+      completedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }));
   };
 
   const clearDraft = () => {
@@ -446,36 +465,18 @@ export function SessionPracticeClient({
             <SoundButton
               sound="successClear"
               volume={0.52}
-              onPointerDown={beginHoldRecording}
-              onPointerUp={endHoldRecording}
-              onPointerCancel={endHoldRecording}
-              onPointerLeave={endHoldRecording}
-              onKeyDown={(event) => {
-                if (event.repeat) {
-                  return;
-                }
-
-                if (event.key === " " || event.key === "Enter") {
-                  event.preventDefault();
-                  beginHoldRecording();
-                }
-              }}
-              onKeyUp={(event) => {
-                if (event.key === " " || event.key === "Enter") {
-                  event.preventDefault();
-                  endHoldRecording();
-                }
-              }}
+              onClick={toggleRecording}
+              disabled={!heardMainPrompt && !transcript.trim()}
               className={`speak-button flex h-40 w-40 items-center justify-center rounded-full text-center text-bark shadow-medal ${
                 speakActive ? "ring-2 ring-cypress/30" : ""
               }`}
             >
               <span>
                 <span className="block text-[11px] uppercase tracking-[0.2em]">
-                  {speakActive ? "Release to" : "Press and hold"}
+                  {speakActive ? "Tap to" : "Tap to"}
                 </span>
                 <span className="mt-2 block text-2xl font-semibold">
-                  {speakActive ? "Finish" : "Answer"}
+                  {speakActive ? "Stop" : "Record"}
                 </span>
               </span>
             </SoundButton>
@@ -485,10 +486,16 @@ export function SessionPracticeClient({
             </div>
           )}
           <p className="mt-7 text-base font-semibold text-bark">
-            {speakActive ? "Recording now..." : "Hold the button and answer out loud."}
+            {speakActive
+              ? "Recording now..."
+              : heardMainPrompt
+                ? "Tap once to record your answer."
+                : "Play the prompt first, then answer."}
           </p>
           <p className="mt-2 max-w-[18rem] text-sm leading-6 text-plum/75">
-            Release when you are done. The app will turn your answer into text automatically.
+            {heardMainPrompt
+              ? "Tap again when you are done. If speech capture fails, type the answer below."
+              : "The session works best when you hear the Spanish first and then respond."}
           </p>
           {errorMessage ? (
             <p className="mt-3 max-w-[18rem] text-sm leading-6 text-coral-900">
@@ -507,11 +514,14 @@ export function SessionPracticeClient({
               setDraftInputMode("typed");
               setTranscript(event.target.value);
               setSessionProgress((current) =>
-                withSessionDraft(
-                  current,
-                  event.target.value,
-                  current.heardVariants.length > 0 ? "ready-to-respond" : "not-started"
-                )
+                ({
+                  ...withSessionDraft(
+                    current,
+                    event.target.value,
+                    current.heardVariants.length > 0 ? "ready-to-respond" : "not-started"
+                  ),
+                  latestAttemptResult: undefined
+                })
               );
             }}
             rows={4}
@@ -533,7 +543,7 @@ export function SessionPracticeClient({
               sound="rewardClaim"
               volume={0.48}
               onClick={runEvaluation}
-              disabled={!transcript.trim() || isPending}
+              disabled={!canEvaluate}
               className="wood-button rounded-panel px-5 py-4 text-sm font-semibold text-mist disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPending ? "Validating..." : "Validate my answer"}
@@ -551,16 +561,52 @@ export function SessionPracticeClient({
       </div>
 
       {latestResult ? (
-        <RewardBanner
-          title={latestResult.functionHit ? "That works in real life" : "One more small adjustment"}
-          body={latestResult.primaryFeedback}
-          icon={latestResult.functionHit ? "✦" : "❖"}
-          tone={latestResult.functionHit ? "gold" : "teal"}
-        >
-          <Chip tone="forest">{latestResult.retryPrompt}</Chip>
-          <Chip>{latestResult.carryAwayChunk}</Chip>
-          {sessionProgress.lastInputMode ? <Chip>{sessionProgress.lastInputMode}</Chip> : null}
-        </RewardBanner>
+        <div className="space-y-3">
+          <RewardBanner
+            title={latestResult.functionHit ? "That works in real life" : "One more small adjustment"}
+            body={latestResult.primaryFeedback}
+            icon={latestResult.functionHit ? "✦" : "❖"}
+            tone={latestResult.functionHit ? "gold" : "teal"}
+          >
+            <Chip tone="forest">{latestResult.retryPrompt}</Chip>
+            <Chip>{latestResult.carryAwayChunk}</Chip>
+            {sessionProgress.lastInputMode ? <Chip>{sessionProgress.lastInputMode}</Chip> : null}
+          </RewardBanner>
+
+          <div className="ornament-frame rounded-panel border border-cypress/16 bg-[linear-gradient(180deg,rgba(247,238,218,0.98)_0%,rgba(229,218,191,0.96)_100%)] p-4 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-bark/55">Next step</p>
+                <h3 className="mt-1 text-lg font-semibold text-bark">
+                  {missionCompleted ? "Mission complete" : "Save this win and move on"}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-plum/78">
+                  {missionCompleted
+                    ? "This encounter is marked as done. Review should now bring the carry-away phrase back later."
+                    : "Once the answer feels good enough, finish the mission and jump into review or arcade."}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <SoundButton
+                  sound={missionCompleted ? "rewardClaim" : "successClear"}
+                  volume={0.46}
+                  onClick={finishMission}
+                  disabled={missionCompleted}
+                  className="wood-button rounded-panel px-5 py-4 text-sm font-semibold text-mist disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {missionCompleted ? "Mission completed" : "Finish mission"}
+                </SoundButton>
+                <SoundLink
+                  href="/review"
+                  sound="rewardClaim"
+                  className="inline-flex items-center justify-center rounded-panel border border-cypress/16 bg-[linear-gradient(180deg,rgba(237,232,218,0.98)_0%,rgba(221,215,198,0.96)_100%)] px-5 py-4 text-sm font-semibold text-bark shadow-sm"
+                >
+                  Go to review
+                </SoundLink>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

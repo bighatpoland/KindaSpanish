@@ -6,6 +6,7 @@ import { createSupabaseSessionRepository } from "@/features/session/supabase-ses
 import { getSessionProgressStorageKey, readStoredSessionProgress } from "@/lib/session/session-storage";
 
 const SESSION_MIGRATION_PREFIX = "kinda-spanish-session-migrated-v1:";
+export const SESSION_PROGRESS_UPDATED_EVENT = "kinda-spanish:session-progress-updated";
 
 type SessionServiceContext = {
   userId?: string;
@@ -14,6 +15,14 @@ type SessionServiceContext = {
 
 function getSessionMigrationKey(scenarioId: string) {
   return `${SESSION_MIGRATION_PREFIX}${scenarioId}`;
+}
+
+function notifySessionProgressUpdated() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(SESSION_PROGRESS_UPDATED_EVENT));
 }
 
 async function ensureRemoteSessionMigration(
@@ -76,6 +85,7 @@ export async function saveSessionProgress(
 ) {
   const localRepository = createLocalSessionRepository();
   await localRepository.saveProgress(progress);
+  notifySessionProgressUpdated();
 
   if (!context?.remoteEnabled || !context.userId) {
     return;
@@ -95,6 +105,7 @@ export async function clearSessionProgress(
 ) {
   const localRepository = createLocalSessionRepository();
   await localRepository.clearProgress(scenarioId);
+  notifySessionProgressUpdated();
 
   if (!context?.remoteEnabled || !context.userId) {
     return;
