@@ -1,11 +1,12 @@
 "use client";
 
 import { SoundLink } from "@/components/sound-link";
+import { CompassIcon, HammerIcon, ScrollIcon } from "@/components/settlers-icons";
 
 const tabs = [
-  { href: "/", label: "Map", glyph: "✦" },
-  { href: "/arcade", label: "Yard", glyph: "⚒" },
-  { href: "/review", label: "Archive", glyph: "❖" }
+  { href: "/", label: "Map", icon: CompassIcon },
+  { href: "/arcade", label: "Yard", icon: HammerIcon },
+  { href: "/review", label: "Archive", icon: ScrollIcon }
 ];
 
 export function ArtifactNav({ activePath }: { activePath: string }) {
@@ -13,6 +14,7 @@ export function ArtifactNav({ activePath }: { activePath: string }) {
     <nav className="stone-panel gold-corners fixed bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-panel border border-[#121b27] px-2 py-2 text-mist shadow-card">
       {tabs.map((tab) => {
         const active = activePath === tab.href;
+        const Icon = tab.icon;
         return (
           <SoundLink
             key={tab.href}
@@ -24,7 +26,9 @@ export function ArtifactNav({ activePath }: { activePath: string }) {
                 : "menu-cell--dark border-white/10 text-sand/92"
             }`}
           >
-            <span className="text-lg leading-none">{tab.glyph}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-[10px] border border-current/15 bg-black/10">
+              <Icon className="h-4.5 w-4.5" />
+            </span>
             <span>{tab.label}</span>
           </SoundLink>
         );

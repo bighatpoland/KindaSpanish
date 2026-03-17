@@ -1,12 +1,24 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { BuildingMarker } from "@/components/building-marker";
 import { Chip } from "@/components/chip";
 import { HomeStateEvents } from "@/components/home-state-events";
 import { ProgressBar } from "@/components/progress-bar";
 import { QuestTile } from "@/components/quest-tile";
 import { RewardBanner } from "@/components/reward-banner";
 import { SectionCard } from "@/components/section-card";
+import { SoundButton } from "@/components/sound-button";
+import { SoundLink } from "@/components/sound-link";
+import {
+  CoinStackIcon,
+  CompassIcon,
+  CrateIcon,
+  HouseIcon,
+  ScrollIcon,
+  TowerIcon
+} from "@/components/settlers-icons";
 import { useProgressSnapshot } from "@/hooks/use-progress-snapshot";
 import {
   arcadeGames,
@@ -18,6 +30,10 @@ import {
 } from "@/features/gamification/data";
 import { getLevelProgress } from "@/features/gamification/selectors";
 import { reviewItems, scenarios } from "@/features/scenarios/data";
+import { readActiveSession } from "@/lib/session/active-session";
+import { readStoredSessionProgress } from "@/lib/session/session-storage";
+
+const HOME_ONBOARDING_SEEN_KEY = "kinda-spanish-home-onboarded-v1";
 
 export default function HomePage() {
   const snapshot = useProgressSnapshot();
@@ -54,9 +70,14 @@ export default function HomePage() {
                   <p className="text-[11px] uppercase tracking-[0.24em] text-[#d9c392]/72">
                     Building menu
                   </p>
-                  <h3 className="mt-2 text-[1.65rem] font-semibold leading-tight text-[#f4e7c3]">
-                    One small useful win
-                  </h3>
+                  <div className="mt-2 flex items-center gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-[#b28a4d] menu-cell shadow-panel">
+                      <CompassIcon className="h-6 w-6" />
+                    </span>
+                    <h3 className="text-[1.65rem] font-semibold leading-tight text-[#f4e7c3]">
+                      One small useful win
+                    </h3>
+                  </div>
                   <p className="mt-2 max-w-[18rem] text-sm leading-6 text-[#d7cbaf]/82">
                     Start the mission, review one phrase, or do a quick drill. Everything below is
                     here to help you speak faster in a real moment today.
@@ -64,28 +85,18 @@ export default function HomePage() {
                 </div>
                 <div className="menu-cell rounded-[18px] border border-[#8f6b3b] px-3 py-3 text-right text-walnut shadow-panel">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-walnut/70">Next up</p>
-                  <p className="text-sm font-semibold">{mainScenario.estimatedMinutes} min mission</p>
+                  <div className="mt-1 flex items-center justify-end gap-2">
+                    <CrateIcon className="h-5 w-5" />
+                    <p className="text-sm font-semibold">{mainScenario.estimatedMinutes} min mission</p>
+                  </div>
                 </div>
               </div>
 
               <div className="map-path absolute left-[50%] top-[35%] hidden h-[38%] w-[2px] -translate-x-1/2 md:block" />
               <div className="map-path absolute left-[24%] top-[56%] hidden h-[2px] w-[52%] md:block" />
-              <div className="building-lot absolute left-[22%] top-[31%] hidden h-7 w-10 rotate-[-18deg] rounded-[8px] md:block" />
-              <div className="building-lot absolute right-[19%] top-[48%] hidden h-8 w-11 rotate-[16deg] rounded-[8px] md:block" />
-              <div className="building-lot absolute left-[17%] bottom-[12%] hidden h-8 w-11 rotate-[12deg] rounded-[8px] md:block" />
-
-              <div className="absolute left-[12%] top-[26%] hidden items-center gap-2 md:flex">
-                <div className="location-marker medallion h-5 w-5 rounded-full" />
-                <span className="text-[10px] uppercase tracking-[0.16em] text-[#d9c392]/72">
-                  Town square
-                </span>
-              </div>
-              <div className="absolute right-[15%] top-[53%] hidden items-center gap-2 md:flex">
-                <div className="location-marker h-4 w-4 rounded-full border border-grove/30 bg-grove/40" />
-                <span className="text-[10px] uppercase tracking-[0.16em] text-[#d9c392]/72">
-                  Training yard
-                </span>
-              </div>
+              <BuildingMarker label="Town square" icon="house" className="left-[10%] top-[24%]" />
+              <BuildingMarker label="Training yard" icon="tower" className="right-[12%] top-[46%]" />
+              <BuildingMarker label="Archive house" icon="compass" className="left-[13%] bottom-[10%]" />
 
               <div className="grid gap-3">
                 <QuestTile
@@ -110,8 +121,8 @@ export default function HomePage() {
                           Listen, answer, retry
                         </p>
                       </div>
-                      <div className="medallion flex h-12 w-12 items-center justify-center rounded-full text-lg text-walnut shadow-medal">
-                        ▶
+                      <div className="medallion flex h-12 w-12 items-center justify-center rounded-full text-walnut shadow-medal">
+                        <HouseIcon className="h-6 w-6" />
                       </div>
                     </div>
                   }
@@ -194,14 +205,23 @@ export default function HomePage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="menu-cell rounded-[18px] border border-[#8f6b3b] p-4 text-center">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#a57d42] bg-black/5">
+                  <CoinStackIcon className="h-5 w-5" />
+                </div>
                 <p className="text-[11px] uppercase tracking-[0.2em] text-bark/55">Coins</p>
                 <p className="mt-2 text-2xl font-semibold text-walnut">{activeProfile.coinsBalance}</p>
               </div>
               <div className="menu-cell rounded-[18px] border border-[#8f6b3b] p-4 text-center">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#a57d42] bg-black/5">
+                  <TowerIcon className="h-5 w-5" />
+                </div>
                 <p className="text-[11px] uppercase tracking-[0.2em] text-bark/55">Achievements</p>
                 <p className="mt-2 text-2xl font-semibold text-walnut">{unlockedAchievements}</p>
               </div>
               <div className="menu-cell rounded-[18px] border border-[#8f6b3b] p-4 text-center">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#a57d42] bg-black/5">
+                  <ScrollIcon className="h-5 w-5" />
+                </div>
                 <p className="text-[11px] uppercase tracking-[0.2em] text-bark/55">Style</p>
                 <p className="mt-2 text-sm font-semibold text-walnut">{userProfile.dialectMode}</p>
               </div>
